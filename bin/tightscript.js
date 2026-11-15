@@ -96,11 +96,13 @@ async function main() {
         { findLetDeclarationViolations },
         { findFileStructureViolations },
         { findExportViolations },
+        { findPrivateInstanceStateViolations },
       ] = await Promise.all([
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
         import("./file-structure-validator.js"),
         import("./export-validator.js"),
+        import("./private-state-validator.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       evaluationErrors.push(...analysis.evaluationErrors);
@@ -108,6 +110,7 @@ async function main() {
         ...findLetDeclarationViolations(analysis.sourceFiles),
         ...findFileStructureViolations(analysis.sourceFiles),
         ...findExportViolations(analysis.sourceFiles),
+        ...findPrivateInstanceStateViolations(analysis.sourceFiles),
       ];
     } catch (error) {
       evaluationErrors.push({
