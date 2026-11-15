@@ -45,6 +45,7 @@ test("CLI rejects separate local value export lists but exempts type-only export
       'src/LocalType.ts:4:10 [REQ-020] Local value "localValue" must be exported inline instead of through a separate export list.\n' +
       'src/LocalType.ts:4:22 [REQ-018] Exported value "localFunction" must not be callable.\n' +
       'src/LocalType.ts:4:22 [REQ-020] Local value "localFunction" must be exported inline instead of through a separate export list.\n' +
+      'src/LocalType.ts:5:10 [REQ-019] Source re-export "remoteValue" must not pass an imported value through unchanged.\n' +
       "FAIL\n",
   );
 });
@@ -117,7 +118,10 @@ test("CLI rejects callable named re-exports and export-star values but skips typ
   assert.equal(
     result.stderr,
     'src/index.ts:1:10 [REQ-018] Exported value "renamedCallable" must not be callable.\n' +
+      'src/index.ts:1:10 [REQ-019] Source re-export "renamedCallable" must not pass an imported value through unchanged.\n' +
       'src/index.ts:2:1 [REQ-018] Exported value "starCallable" must not be callable.\n' +
+      'src/index.ts:2:1 [REQ-019] Source star export "ordinaryValue" must not pass an imported value through unchanged.\n' +
+      'src/index.ts:2:1 [REQ-019] Source star export "starCallable" must not pass an imported value through unchanged.\n' +
       "FAIL\n",
   );
 });
