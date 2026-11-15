@@ -43,8 +43,102 @@ test("CLI rejects separate local value export lists but exempts type-only export
       'src/LocalObject.ts:2:10 [REQ-020] Local value "publicObject" must be exported inline instead of through a separate export list.\n' +
       'src/LocalObject.ts:2:10 [REQ-021] Exported const "publicObject" must not expose an object literal.\n' +
       'src/LocalType.ts:4:10 [REQ-020] Local value "localValue" must be exported inline instead of through a separate export list.\n' +
+      'src/LocalType.ts:4:22 [REQ-018] Exported value "localFunction" must not be callable.\n' +
       'src/LocalType.ts:4:22 [REQ-020] Local value "localFunction" must be exported inline instead of through a separate export list.\n' +
       "FAIL\n",
+  );
+});
+
+test("CLI rejects direct callable exports and callable values [REQ-018]", (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  project.writeFile(
+    "src/direct.ts",
+    "export function directFunction() {}\n" +
+      "export const callableValue: () => void = () => {};\n" +
+      "export const nonCallable = 1;\n" +
+      "export default function defaultCallable() {}\n",
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(
+    result.stderr,
+    'src/direct.ts:1:17 [REQ-018] Exported value "directFunction" must not be callable.\n' +
+      'src/direct.ts:2:14 [REQ-018] Exported value "callableValue" must not be callable.\n' +
+      'src/direct.ts:4:25 [REQ-018] Exported value "default" must not be callable.\n' +
+      "FAIL\n",
+  );
+});
+
+test("CLI rejects callable named re-exports and export-star values but skips type-only exports [REQ-018]", (t) => {
+  const project = createTemporaryProject(t);
+  project.writeFile(
+    "tightscript.config.json",
+    JSON.stringify({ include: ["src/index.ts"] }),
+  );
+  project.writeFile(
+    "src/index.ts",
+    'export { namedCallable as renamedCallable } from "../support/named.js";\n' +
+      'export * from "../support/star.js";\n' +
+      'export type { typeOnlyCallable } from "../support/type-only.js";\n',
+  );
+  project.writeFile(
+    "support/named.ts",
+    "export function namedCallable() {}\n",
+  );
+  project.writeFile(
+    "support/star.ts",
+    "export const starCallable = () => {};\n" +
+      "export default function defaultCallable() {}\n" +
+      "export const ordinaryValue = 1;\n",
+  );
+  project.writeFile(
+    "support/type-only.ts",
+    "export function typeOnlyCallable() {}\n",
+  );
+  project.writeFile(
+    "tsconfig.json",
+    JSON.stringify({
+      compilerOptions: { module: "NodeNext", moduleResolution: "NodeNext" },
+    }),
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(
+    result.stderr,
+    'src/index.ts:1:10 [REQ-018] Exported value "renamedCallable" must not be callable.\n' +
+      'src/index.ts:2:1 [REQ-018] Exported value "starCallable" must not be callable.\n' +
+      "FAIL\n",
+  );
+});
+
+test("CLI fails closed when REQ-018 callable export information is unresolved", (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  project.writeFile(
+    "src/unresolved.ts",
+    "export const unknownCallable = missingFactory();\n",
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(
+    result.stderr,
+    "src/unresolved.ts:1:14 [REQ-005] Evaluation error: Could not resolve callable export information required by REQ-018.\nFAIL\n",
   );
 });
 

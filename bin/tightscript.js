@@ -119,7 +119,7 @@ async function main() {
         policyViolations = [
           ...findLetDeclarationViolations(analysis.sourceFiles),
           ...findFileStructureViolations(analysis.sourceFiles),
-          ...findExportViolations(analysis.sourceFiles),
+          ...findExportViolations(analysis),
           ...findPrivateInstanceStateViolations(analysis.sourceFiles),
           ...findInterfaceViolations(analysis),
           ...findTypeAnnotationViolations(analysis.sourceFiles),

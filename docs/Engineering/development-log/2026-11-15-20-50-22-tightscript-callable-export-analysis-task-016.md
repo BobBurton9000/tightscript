@@ -1,0 +1,8 @@
+# 2026-11-15 — Tightscript callable export analysis (TASK-016)
+
+- Type: Feature implementation
+- Scope: REQ-018 callable export analysis and CLI integration
+- Context and evidence: TASK-016 was the first available incomplete task in `.specflow/specs/tightscript/tasks.md`. Approved REQ-018 requires callable direct exports, named re-exports, and `export *` to fail; type-only exports are excluded. Existing export CLI tests contain an exact-output assertion for a local `export { localFunction }` list that does not include a REQ-018 diagnostic.
+- Decision or change: Added TypeScript-checker-based callable export analysis for selected modules, including direct callable exports, callable named re-exports, `export *`, type-only export exclusion, and fail-closed handling when callability resolves to `any`/unknown information. Wired the validator into CLI analysis and added real-CLI module-graph cases. Did not change the existing exact-output expectation while its relationship to REQ-018 remains unresolved.
+- Observed result: Ran `node --test test/cli-export.test.js` with Node.js v26.13.1 and TypeScript 5.9.3. Four tests passed and one failed: the existing exact-output test also received a REQ-018 diagnostic for `localFunction` exported through a local export list. The new direct-export, named-re-export/export-star/type-only, and unresolved-callability cases passed. The verification conflict remains unresolved; no task checkbox was changed and no commit was created.
+- Follow-up: Decide whether REQ-018 covers callable values exposed by local export lists (`export { localFunction }`) or only inline direct exports plus source-module named re-exports and export-star. Then continue TASK-016 without weakening approved behavior.

@@ -276,12 +276,287 @@ function exportedObjectViolations(selectedFile, localValues) {
   return violations;
 }
 
-/** Find REQ-020 and REQ-021 violations in the selected TypeScript source files. */
-export function findExportViolations(sourceFiles) {
+const CALLABLE_EXPORT_REQUIREMENT_ID = "REQ-018";
+const UNRESOLVED_CALLABILITY_FLAGS =
+  ts.TypeFlags.Any | ts.TypeFlags.Unknown | ts.TypeFlags.TypeParameter;
+
+function nameText(name) {
+  if (typeof name === "string") {
+    return name;
+  }
+  return ts.isIdentifier(name) || ts.isStringLiteralLike(name)
+    ? name.text
+    : undefined;
+}
+
+function addExportRoute(routes, name, node, typeOnly = false) {
+  const text = nameText(name);
+  if (text === undefined) {
+    return;
+  }
+  const candidates = routes.get(text) ?? [];
+  candidates.push({ node, typeOnly });
+  routes.set(text, candidates);
+}
+
+function addBindingExportRoutes(routes, bindingName) {
+  if (ts.isIdentifier(bindingName)) {
+    addExportRoute(routes, bindingName, bindingName);
+    return;
+  }
+
+  if (ts.isObjectBindingPattern(bindingName) || ts.isArrayBindingPattern(bindingName)) {
+    for (const element of bindingName.elements) {
+      if (ts.isBindingElement(element)) {
+        addBindingExportRoutes(routes, element.name);
+      }
+    }
+  }
+}
+
+function exportRoutesFor(sourceFile) {
+  const routes = new Map();
+  const starExports = [];
+
+  for (const statement of sourceFile.statements) {
+    if (ts.isExportDeclaration(statement)) {
+      if (statement.exportClause === undefined) {
+        if (statement.moduleSpecifier !== undefined && !statement.isTypeOnly) {
+          starExports.push(statement);
+        }
+        continue;
+      }
+
+      if (ts.isNamedExports(statement.exportClause)) {
+        for (const specifier of statement.exportClause.elements) {
+          addExportRoute(
+            routes,
+            specifier.name,
+            specifier,
+            statement.isTypeOnly || specifier.isTypeOnly,
+          );
+        }
+      } else if (ts.isNamespaceExport(statement.exportClause)) {
+        addExportRoute(routes, statement.exportClause.name, statement.exportClause);
+      }
+      continue;
+    }
+
+    if (ts.isExportAssignment(statement)) {
+      addExportRoute(
+        routes,
+        statement.isExportEquals ? "export=" : "default",
+        statement.expression,
+      );
+      continue;
+    }
+
+    const modifiers = ts.getModifiers(statement) ?? [];
+    const isDefault = modifiers.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.DefaultKeyword,
+    );
+    const isExported = isDefault || modifiers.some(
+      (modifier) => modifier.kind === ts.SyntaxKind.ExportKeyword,
+    );
+    if (!isExported) {
+      continue;
+    }
+
+    if (isDefault) {
+      addExportRoute(routes, "default", statement.name ?? statement);
+    } else if (ts.isVariableStatement(statement)) {
+      for (const declaration of statement.declarationList.declarations) {
+        addBindingExportRoutes(routes, declaration.name);
+      }
+    } else if (statement.name !== undefined) {
+      addExportRoute(routes, statement.name, statement.name);
+    }
+  }
+
+  return { routes, starExports };
+}
+
+function reportUnresolvedCallableExport(analysis, sourceNode) {
+  analysis.requireResolvedSemanticInformation(
+    undefined,
+    sourceNode,
+    "callable export information required by REQ-018",
+  );
+}
+
+function resolvedSymbolForExport(analysis, symbol, sourceNode) {
+  if (symbol === undefined || symbol.flags === 0) {
+    reportUnresolvedCallableExport(analysis, sourceNode);
+    return undefined;
+  }
+
+  let resolvedSymbol = symbol;
+  if ((symbol.flags & ts.SymbolFlags.Alias) !== 0) {
+    try {
+      resolvedSymbol = analysis.checker.getAliasedSymbol(symbol);
+    } catch {
+      reportUnresolvedCallableExport(analysis, sourceNode);
+      return undefined;
+    }
+  }
+
+  if (
+    resolvedSymbol === undefined ||
+    resolvedSymbol.flags === 0 ||
+    (resolvedSymbol.flags & ts.SymbolFlags.Alias) !== 0
+  ) {
+    reportUnresolvedCallableExport(analysis, sourceNode);
+    return undefined;
+  }
+
+  return resolvedSymbol;
+}
+
+function moduleExportsForStar(analysis, selectedFile, statement) {
+  let moduleSymbol;
+  try {
+    moduleSymbol = analysis.checker.getSymbolAtLocation(statement.moduleSpecifier);
+  } catch {
+    reportUnresolvedCallableExport(analysis, statement);
+    return undefined;
+  }
+
+  if (moduleSymbol === undefined) {
+    reportUnresolvedCallableExport(analysis, statement);
+    return undefined;
+  }
+
+  try {
+    return analysis.checker.getExportsOfModule(moduleSymbol);
+  } catch {
+    reportUnresolvedCallableExport(analysis, statement);
+    return undefined;
+  }
+}
+
+function routeForExport(exportName, routes, starExports) {
+  const explicitRoute = (routes.get(exportName) ?? []).find(
+    (route) => !route.typeOnly,
+  );
+  if (explicitRoute !== undefined) {
+    return explicitRoute.node;
+  }
+
+  if (exportName === "default") {
+    return undefined;
+  }
+
+  for (const { statement, exports } of starExports) {
+    if (exports?.some((symbol) => symbol.getName() === exportName)) {
+      return statement;
+    }
+  }
+
+  return undefined;
+}
+
+function callableExportViolations(analysis, selectedFile) {
+  const { sourceFile, displayPath } = selectedFile;
+  if (!ts.isExternalModule(sourceFile)) {
+    return [];
+  }
+
+  const violations = [];
+  const { checker } = analysis;
+  if (checker === undefined) {
+    reportUnresolvedCallableExport(analysis, sourceFile);
+    return violations;
+  }
+
+  let moduleSymbol;
+  let exportedSymbols;
+  try {
+    moduleSymbol = sourceFile.symbol ?? checker.getSymbolAtLocation(sourceFile);
+    if (moduleSymbol === undefined) {
+      reportUnresolvedCallableExport(analysis, sourceFile);
+      return violations;
+    }
+    exportedSymbols = checker.getExportsOfModule(moduleSymbol);
+  } catch {
+    reportUnresolvedCallableExport(analysis, sourceFile);
+    return violations;
+  }
+
+  const { routes, starExports: starExportStatements } = exportRoutesFor(sourceFile);
+  const starExports = starExportStatements.map((statement) => ({
+    statement,
+    exports: moduleExportsForStar(analysis, selectedFile, statement),
+  }));
+
+  for (const exportedSymbol of exportedSymbols) {
+    const exportName = exportedSymbol.getName();
+    const route = routeForExport(exportName, routes, starExports);
+    if (route === undefined) {
+      continue;
+    }
+
+    const targetSymbol = resolvedSymbolForExport(analysis, exportedSymbol, route);
+    if (targetSymbol === undefined || (targetSymbol.flags & ts.SymbolFlags.Value) === 0) {
+      continue;
+    }
+
+    const declaration = targetSymbol.valueDeclaration ?? targetSymbol.declarations?.[0];
+    let exportedType;
+    try {
+      exportedType = checker.getTypeOfSymbolAtLocation(
+        targetSymbol,
+        declaration ?? route,
+      );
+    } catch {
+      reportUnresolvedCallableExport(analysis, route);
+      continue;
+    }
+
+    if (
+      exportedType === undefined ||
+      (exportedType.flags & UNRESOLVED_CALLABILITY_FLAGS) !== 0
+    ) {
+      reportUnresolvedCallableExport(analysis, route);
+      continue;
+    }
+
+    let callSignatures;
+    try {
+      callSignatures = checker.getSignaturesOfType(
+        exportedType,
+        ts.SignatureKind.Call,
+      );
+    } catch {
+      reportUnresolvedCallableExport(analysis, route);
+      continue;
+    }
+
+    if (callSignatures.length === 0) {
+      continue;
+    }
+
+    const position = route.getStart(sourceFile);
+    violations.push(
+      diagnosticAt(
+        sourceFile,
+        displayPath,
+        position,
+        CALLABLE_EXPORT_REQUIREMENT_ID,
+        `Exported value "${exportName}" must not be callable.`,
+      ),
+    );
+  }
+
+  return violations;
+}
+
+/** Find REQ-018, REQ-020, and REQ-021 violations in the selected TypeScript modules. */
+export function findExportViolations(analysis) {
   const violations = [];
 
-  for (const selectedFile of sourceFiles) {
+  for (const selectedFile of analysis.sourceFiles) {
     const localValues = localValueDeclarations(selectedFile.sourceFile);
+    violations.push(...callableExportViolations(analysis, selectedFile));
     violations.push(...localExportListViolations(selectedFile, localValues));
     violations.push(...exportedObjectViolations(selectedFile, localValues));
   }
