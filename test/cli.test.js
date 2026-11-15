@@ -26,3 +26,42 @@ test("CLI fails with a source-scope configuration error when CWD config is missi
   assert.ok(result.stderr.includes("tightscript.config.json"));
   assert.ok(result.stderr.includes(project.cwd));
 });
+
+test("CLI accepts a valid positive include configuration [REQ-008, REQ-039]", (t) => {
+  const project = createTemporaryProject(t);
+  project.writeFile(
+    "tightscript.config.json",
+    JSON.stringify({ include: ["src/**/*.ts", "src/**/*.tsx"] }),
+  );
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.doesNotMatch(result.stderr, /^FAIL: Source-scope configuration error:/);
+});
+
+test("CLI rejects invalid source-scope configurations [REQ-008, REQ-039]", async (t) => {
+  const invalidConfigurations = [
+    ["malformed JSON", '{"include":['],
+    ["missing include", JSON.stringify({})],
+    ["empty include", JSON.stringify({ include: [] })],
+    ["unknown setting", JSON.stringify({ include: ["src/**/*.ts"], exclude: [] })],
+    ["negated pattern", JSON.stringify({ include: ["!src/**/*.ts"] })],
+    ["empty pattern", JSON.stringify({ include: ["   "] })],
+  ];
+
+  for (const [caseName, configurationContents] of invalidConfigurations) {
+    await t.test(caseName, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      project.writeFile("tightscript.config.json", configurationContents);
+      const result = runCli(project.cwd);
+
+      assert.ifError(result.error);
+      assert.equal(result.signal, null);
+      assert.equal(result.status, 1);
+      assert.equal(result.stdout, "");
+      assert.match(result.stderr, /^FAIL: Source-scope configuration error:/);
+      assert.doesNotMatch(result.stderr, /Evaluation error \[REQ-005\]/);
+    });
+  }
+});
