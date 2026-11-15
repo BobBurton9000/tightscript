@@ -66,8 +66,9 @@ async function main() {
     return;
   }
 
+  let configuration;
   try {
-    configurationFromJson(configurationContents);
+    configuration = configurationFromJson(configurationContents);
   } catch (error) {
     process.stderr.write(
       `FAIL: Source-scope configuration error: ${CONFIG_FILENAME} ${error.message}.\n`,
@@ -76,9 +77,82 @@ async function main() {
     return;
   }
 
-  process.stderr.write(
-    "FAIL: Evaluation error [REQ-005]: Tightscript policy evaluation is not implemented yet.\n",
-  );
+  const evaluationErrors = [];
+  let selectedFiles = [];
+  try {
+    const { resolveSourceFiles } = await import("./source-scope.js");
+    selectedFiles = await resolveSourceFiles(configuration.include);
+  } catch (error) {
+    evaluationErrors.push({
+      message: `Could not resolve source files: ${error.message}`,
+    });
+  }
+
+  let policyViolations = [];
+  if (evaluationErrors.length === 0) {
+    try {
+      const [{ createTypeScriptAnalysis }, { findLetDeclarationViolations }] =
+        await Promise.all([
+          import("./typescript-analysis.js"),
+          import("./let-declaration-validator.js"),
+        ]);
+      const analysis = createTypeScriptAnalysis(selectedFiles);
+      evaluationErrors.push(...analysis.evaluationErrors);
+      policyViolations = findLetDeclarationViolations(analysis.sourceFiles);
+    } catch (error) {
+      evaluationErrors.push({
+        message: `Could not complete policy evaluation: ${error.message}`,
+      });
+    }
+  }
+
+  const diagnostics = [
+    ...policyViolations,
+    ...evaluationErrors.map((error) => ({
+      ...error,
+      requirementId: "REQ-005",
+      message: `Evaluation error: ${error.message}`,
+    })),
+  ];
+  diagnostics.sort((left, right) => {
+    const leftLocation = [
+      left.filePath ?? "",
+      left.line ?? 0,
+      left.column ?? 0,
+      left.requirementId,
+      left.message,
+    ];
+    const rightLocation = [
+      right.filePath ?? "",
+      right.line ?? 0,
+      right.column ?? 0,
+      right.requirementId,
+      right.message,
+    ];
+    for (let index = 0; index < leftLocation.length; index += 1) {
+      if (leftLocation[index] < rightLocation[index]) return -1;
+      if (leftLocation[index] > rightLocation[index]) return 1;
+    }
+    return 0;
+  });
+
+  if (diagnostics.length === 0) {
+    process.stdout.write("PASS\n");
+    return;
+  }
+
+  for (const diagnostic of diagnostics) {
+    const location =
+      diagnostic.filePath === undefined
+        ? ""
+        : diagnostic.line === undefined
+          ? `${diagnostic.filePath} `
+          : `${diagnostic.filePath}:${diagnostic.line}:${diagnostic.column} `;
+    process.stderr.write(
+      `${location}[${diagnostic.requirementId}] ${diagnostic.message}\n`,
+    );
+  }
+  process.stderr.write("FAIL\n");
   process.exitCode = 1;
 }
 

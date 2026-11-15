@@ -1,0 +1,7 @@
+# 2026-11-15 — Tightscript CLI diagnostics (TASK-007)
+
+- Type: Implementation
+- Scope: Tightscript CLI diagnostics and initial validator integration
+- Context and evidence: Approved task TASK-007 requires deterministic diagnostics for the initial REQ-009 validator, pass/fail output consistent with exit status, and fail-closed handling of evaluation errors. The CLI already loaded source-scope configuration, while source discovery, TypeScript analysis, and the REQ-009 validator were implemented by completed dependency tasks.
+- Decision or change: Wired CWD source discovery, TypeScript analysis, and REQ-009 validation into the CLI. Added deterministic ordering and location/requirement-qualified diagnostics; the CLI reports PASS only after a clean complete check and FAIL with nonzero status for policy findings or evaluation errors. Added real-CLI coverage for empty and clean selections, sorted REQ-009 findings, and selected-file parse failure.
+- Observed result: `node --check bin/tightscript.js`, `node --check test/cli-evaluation.test.js`, and `git diff --check` passed. `npm test` passed all 32 tests on Node.js 26.13.1 with TypeScript 5.9.3 and with TypeScript 6.0.3, both supplied temporarily from existing local installs; no dependency installation or symlink was retained. A prior `npm test` without a TypeScript install failed because the declared peer dependency was not locally resolvable.
