@@ -1,0 +1,7 @@
+# 2026-11-15 — Source documentation link validation
+
+- Type: Policy implementation
+- Scope: Comment and Markdown-link validation (TASK-019)
+- Context and evidence: The existing comment validator checked the syntax of `@see` comments but did not resolve their targets. TASK-019 covers the approved `REQ-011`, `REQ-012`, and `REQ-013` link behavior.
+- Decision or change: Updated `bin/comment-validator.js` to resolve links relative to each selected source file, follow symlinks to their final targets, enforce repository containment, Markdown extensions, and Git tracking, and validate GitHub-style heading anchors with duplicate suffixes. Updated `test/cli-comments.test.js` with real temporary Git repositories and coverage for valid relative links, missing, non-Markdown, untracked, and outside targets, final symlink targets, and heading fragments.
+- Observed result: `node --check bin/comment-validator.js && node --check test/cli-comments.test.js` passed. `node --test test/cli-comments.test.js` passed 19 tests with no skips; symlink creation and all final-target cases ran. `npm test` passed all 83 tests with no skips on Node.js 26.13.1 using TypeScript 5.9.3. TypeScript was installed temporarily with `npm install --no-save --no-package-lock --ignore-scripts typescript@5.9.3` for verification; the temporary `node_modules/` directory was removed afterward. `git diff --check -- bin/comment-validator.js test/cli-comments.test.js` passed.
