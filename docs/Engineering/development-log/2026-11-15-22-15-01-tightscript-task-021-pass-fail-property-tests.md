@@ -1,0 +1,7 @@
+# 2026-11-15 — Pass/fail property verification cases
+
+- Type: Property verification tests
+- Scope: CLI pass/fail and fail-closed integration coverage (TASK-021)
+- Context and evidence: TASK-021 verifies active property `PROP-REQ-001-01`, which requires PASS only after a complete clean check and FAIL for policy violations, evaluation errors, or invalid source scope. Existing real-CLI coverage did not provide a single property-traceable set of named cases for all of those outcomes.
+- Decision or change: Added `test/cli-pass-fail-property.test.js` with real-CLI temporary-project cases for clean and valid-empty selections, policy violations, missing/absent/empty source scope, selected-file parse failures, malformed compiler configuration, unresolved interface heritage required by REQ-024, and unrelated TypeScript type errors. Marked TASK-021 complete in `.specflow/specs/tightscript/tasks.md`; that ignored workflow artefact remains local and is not included in version control.
+- Observed result: `node --check test/cli-pass-fail-property.test.js` passed. `node --test test/cli-pass-fail-property.test.js` passed 11 tests with no failures. `npm test` passed 94 tests with no failures or skips on Node.js 26.13.1 and TypeScript 5.9.3. TypeScript was installed temporarily with `npm install --no-save --no-package-lock --ignore-scripts typescript@5.9.3` because the peer dependency was not installed; the temporary `node_modules/` directory was removed after verification.
