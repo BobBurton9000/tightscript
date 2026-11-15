@@ -1,0 +1,8 @@
+# 2026-11-15 — Tightscript TypeScript analysis
+
+- Type: Implementation
+- Scope: Tightscript analysis construction and tests (TASK-005)
+- Context and evidence: The approved task requires analysis over source-scope-selected roots, CWD `tsconfig.json` compiler options without taking root selection from TypeScript project file lists, fail-closed handling for selected-file parse/read failures and malformed compiler configuration, and no failure solely for unrelated TypeScript type errors.
+- Decision or change: Added `bin/typescript-analysis.js` to build a TypeScript `Program` from the selected roots, apply only parsed compiler options, retain selected source files and the checker, record compiler/configuration and syntax/read evaluation errors, and let rules mark required unresolved semantic information as an evaluation error. Added `test/typescript-analysis.test.js` with real Compiler API programs for selected-root handling, parse/read/configuration failures, required unresolved symbols, and unrelated type errors. Updated `.specflow/specs/tightscript/tasks.md` to complete TASK-005. Implemented files: `bin/typescript-analysis.js` and `test/typescript-analysis.test.js`.
+- Observed result: `npm test` passed all 27 tests on Node.js 26.13.1 with TypeScript 5.9.3 and again with TypeScript 6.0.3. `git diff --check`, `node --check bin/typescript-analysis.js`, and `node --check test/typescript-analysis.test.js` passed. The temporary TypeScript installs used for verification were removed. CLI pass/fail and exit-status integration remains deferred as specified by the task list.
+- Follow-up: The analyzer's evaluation errors need wiring into CLI diagnostics under the later approved tasks that add CLI diagnostics.
