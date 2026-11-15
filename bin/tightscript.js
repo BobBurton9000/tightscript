@@ -100,6 +100,7 @@ async function main() {
         { findInterfaceViolations },
         { findTypeAnnotationViolations },
         { findTypeAliasAndUnionViolations },
+        { findSyntaxStyleViolations },
       ] = await Promise.all([
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
@@ -109,6 +110,7 @@ async function main() {
         import("./interface-validator.js"),
         import("./type-annotation-validator.js"),
         import("./type-alias-union-validator.js"),
+        import("./syntax-style-validator.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       try {
@@ -120,6 +122,7 @@ async function main() {
           ...findInterfaceViolations(analysis),
           ...findTypeAnnotationViolations(analysis.sourceFiles),
           ...findTypeAliasAndUnionViolations(analysis.sourceFiles),
+          ...findSyntaxStyleViolations(analysis),
         ];
       } finally {
         evaluationErrors.push(...analysis.evaluationErrors);
