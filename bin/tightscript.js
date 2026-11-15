@@ -95,16 +95,19 @@ async function main() {
         { createTypeScriptAnalysis },
         { findLetDeclarationViolations },
         { findFileStructureViolations },
+        { findExportViolations },
       ] = await Promise.all([
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
         import("./file-structure-validator.js"),
+        import("./export-validator.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       evaluationErrors.push(...analysis.evaluationErrors);
       policyViolations = [
         ...findLetDeclarationViolations(analysis.sourceFiles),
         ...findFileStructureViolations(analysis.sourceFiles),
+        ...findExportViolations(analysis.sourceFiles),
       ];
     } catch (error) {
       evaluationErrors.push({
