@@ -92,6 +92,7 @@ async function main() {
   if (evaluationErrors.length === 0) {
     try {
       const [
+        { findCommentViolations },
         { createTypeScriptAnalysis },
         { findLetDeclarationViolations },
         { findFileStructureViolations },
@@ -104,6 +105,7 @@ async function main() {
         { findSyntaxStyleViolations },
         { findRepeatedStringViolations },
       ] = await Promise.all([
+        import("./comment-validator.js"),
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
         import("./file-structure-validator.js"),
@@ -128,6 +130,7 @@ async function main() {
           ...findTypeAnnotationViolations(analysis.sourceFiles),
           ...findTypeAliasAndUnionViolations(analysis.sourceFiles),
           ...findSyntaxStyleViolations(analysis),
+          ...findCommentViolations(analysis),
           ...findRepeatedStringViolations(analysis),
         ];
       } finally {

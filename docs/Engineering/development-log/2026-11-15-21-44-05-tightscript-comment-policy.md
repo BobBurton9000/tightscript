@@ -1,0 +1,7 @@
+# 2026-11-15 — Enforce the TypeScript comment policy
+
+- Type: Implementation
+- Scope: CLI TypeScript comment validation
+- Context and evidence: TASK-018 implements approved `REQ-010` and `REQ-014`. The CLI had no comment-policy validator; the accepted `@see` comment shape and prohibition on suppression directives are specified in the approved Feature artefacts.
+- Decision or change: Added TypeScript scanner-based validation for single-line, block, and documentation comments. The validator accepts only a sole `@see` Markdown link, reports malformed comments and suppression directives, and leaves other policy diagnostics active. Added real-CLI tests for comment forms and formatting markers, extra prose and links, comment-like strings, and `@ts-ignore` alongside a `let` violation. Updated `.specflow/specs/tightscript/tasks.md` to mark TASK-018 complete. Files changed: `bin/comment-validator.js`, `bin/tightscript.js`, `test/cli-comments.test.js`, and `.specflow/specs/tightscript/tasks.md`.
+- Observed result: `node --check bin/comment-validator.js && node --check test/cli-comments.test.js && node --check bin/tightscript.js` passed. `node --test test/cli-comments.test.js` passed all 4 tests. `npm test` passed all 68 tests. Verification used TypeScript 5.9.3 through a temporary symlink to an existing installation; the symlink was removed after each run and no dependency metadata was changed. `git diff --check` passed.
