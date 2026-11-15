@@ -1,0 +1,7 @@
+# 2026-11-15 — Tightscript CLI bootstrap
+
+- Type: Implementation
+- Scope: Tightscript npm package and real-CLI test scaffold (`TASK-001`).
+- Context and evidence: The approved task list selected `TASK-001` as the first available task. The repository had no package manifest, executable, or test harness. The task approves Node.js `^24.0.0 || ^26.0.0` and TypeScript Compiler API `>=5.9.0 <7.0.0`; Node.js `v26.13.1` was available for verification.
+- Decision or change: Added npm package metadata with the `tightscript` bin mapping, approved Node.js engine and TypeScript peer ranges, and a `node:test` script. Added an executable CLI bootstrap that fails with a source-scope configuration error when `tightscript.config.json` is absent from CWD and otherwise fails closed while policy evaluation is not yet implemented. Added reusable temporary-project and real-process CLI helpers, metadata assertions, and a missing-config integration case. Updated the `TASK-001` checkbox. Files: `package.json`, `bin/tightscript.js`, `test/cli.test.js`, `test-support/temp-project.js`, `test-support/run-cli.js`, and `.specflow/specs/tightscript/tasks.md`.
+- Observed result: `npm test` passed (2 tests, 0 failures) on Node.js `v26.13.1`. `npm pack --dry-run --ignore-scripts` succeeded and included `bin/tightscript.js` and `package.json`. The tests verify the approved compatibility metadata and assert the CLI's missing-CWD-config output and exit status. TypeScript compatibility boundary execution was not part of this scaffold task.

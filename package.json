@@ -1,0 +1,21 @@
+{
+  "name": "tightscript",
+  "version": "0.1.0",
+  "description": "A strict pass/fail policy gate for TypeScript projects",
+  "type": "module",
+  "bin": {
+    "tightscript": "./bin/tightscript.js"
+  },
+  "files": [
+    "bin"
+  ],
+  "scripts": {
+    "test": "node --test"
+  },
+  "engines": {
+    "node": "^24.0.0 || ^26.0.0"
+  },
+  "peerDependencies": {
+    "typescript": ">=5.9.0 <7.0.0"
+  }
+}
