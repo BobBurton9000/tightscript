@@ -91,14 +91,21 @@ async function main() {
   let policyViolations = [];
   if (evaluationErrors.length === 0) {
     try {
-      const [{ createTypeScriptAnalysis }, { findLetDeclarationViolations }] =
-        await Promise.all([
-          import("./typescript-analysis.js"),
-          import("./let-declaration-validator.js"),
-        ]);
+      const [
+        { createTypeScriptAnalysis },
+        { findLetDeclarationViolations },
+        { findFileStructureViolations },
+      ] = await Promise.all([
+        import("./typescript-analysis.js"),
+        import("./let-declaration-validator.js"),
+        import("./file-structure-validator.js"),
+      ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       evaluationErrors.push(...analysis.evaluationErrors);
-      policyViolations = findLetDeclarationViolations(analysis.sourceFiles);
+      policyViolations = [
+        ...findLetDeclarationViolations(analysis.sourceFiles),
+        ...findFileStructureViolations(analysis.sourceFiles),
+      ];
     } catch (error) {
       evaluationErrors.push({
         message: `Could not complete policy evaluation: ${error.message}`,
