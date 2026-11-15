@@ -97,21 +97,27 @@ async function main() {
         { findFileStructureViolations },
         { findExportViolations },
         { findPrivateInstanceStateViolations },
+        { findInterfaceViolations },
       ] = await Promise.all([
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
         import("./file-structure-validator.js"),
         import("./export-validator.js"),
         import("./private-state-validator.js"),
+        import("./interface-validator.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
-      evaluationErrors.push(...analysis.evaluationErrors);
-      policyViolations = [
-        ...findLetDeclarationViolations(analysis.sourceFiles),
-        ...findFileStructureViolations(analysis.sourceFiles),
-        ...findExportViolations(analysis.sourceFiles),
-        ...findPrivateInstanceStateViolations(analysis.sourceFiles),
-      ];
+      try {
+        policyViolations = [
+          ...findLetDeclarationViolations(analysis.sourceFiles),
+          ...findFileStructureViolations(analysis.sourceFiles),
+          ...findExportViolations(analysis.sourceFiles),
+          ...findPrivateInstanceStateViolations(analysis.sourceFiles),
+          ...findInterfaceViolations(analysis),
+        ];
+      } finally {
+        evaluationErrors.push(...analysis.evaluationErrors);
+      }
     } catch (error) {
       evaluationErrors.push({
         message: `Could not complete policy evaluation: ${error.message}`,
