@@ -98,6 +98,7 @@ async function main() {
         { findExportViolations },
         { findPrivateInstanceStateViolations },
         { findInterfaceViolations },
+        { findTypeAnnotationViolations },
       ] = await Promise.all([
         import("./typescript-analysis.js"),
         import("./let-declaration-validator.js"),
@@ -105,6 +106,7 @@ async function main() {
         import("./export-validator.js"),
         import("./private-state-validator.js"),
         import("./interface-validator.js"),
+        import("./type-annotation-validator.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       try {
@@ -114,6 +116,7 @@ async function main() {
           ...findExportViolations(analysis.sourceFiles),
           ...findPrivateInstanceStateViolations(analysis.sourceFiles),
           ...findInterfaceViolations(analysis),
+          ...findTypeAnnotationViolations(analysis.sourceFiles),
         ];
       } finally {
         evaluationErrors.push(...analysis.evaluationErrors);
