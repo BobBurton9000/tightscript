@@ -562,6 +562,10 @@ function importedBindingViolations(analysis, selectedFile) {
 }
 
 /** Find REQ-019 imported-value passthroughs in selected TypeScript modules. */
+// @see [Tightscript: imported-value findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: import analysis rejects unchanged values and behavior-free export wrappers.](./imported-values.md#tightscript-req-019)
+// @see [Tightscript: imported-value findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [Tightscript: import analysis follows aliases and nested wrappers to identify passthroughs.](./imported-values.md#tightscript-prop-req-019-01)
 export function findImportedValueViolations(analysis) {
   const violations = [];
   for (const selectedFile of analysis.sourceFiles) {

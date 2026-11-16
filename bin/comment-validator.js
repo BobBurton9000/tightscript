@@ -321,6 +321,14 @@ function commentViolations(selectedFile, getRepositoryContext) {
 }
 
 /** Find REQ-010 through REQ-014 comment and link-policy violations. */
+// @see [Tightscript: comment findings include their file, source location, and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: comment validation accepts only one `@see` Markdown link per comment.](./comment-policy.md#tightscript-req-010)
+// @see [Tightscript: link validation resolves from source files and requires tracked repository Markdown.](./comment-policy.md#tightscript-req-011)
+// @see [Tightscript: link validation rejects missing, external, non-Markdown, and untracked targets.](./comment-policy.md#tightscript-req-012)
+// @see [Tightscript: link validation checks GitHub-compatible heading anchors and duplicate suffixes.](./comment-policy.md#tightscript-req-013)
+// @see [Tightscript: comment validation reports suppressions without hiding other violations.](./comment-policy.md#tightscript-req-014)
+// @see [Tightscript: comment findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [Tightscript: comment validation enforces the comment, link-target, and suppression invariants.](./comment-policy.md#tightscript-prop-req-010-01)
 export function findCommentViolations(analysis) {
   const violations = [];
   let repositoryContext;

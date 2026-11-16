@@ -144,6 +144,7 @@ function sourceLocationFromNode(node, selectedPaths) {
 }
 
 /** Build a TypeScript program over exactly the source-scope-selected roots. */
+// @see [Tightscript: analysis records parse, read, config, and required semantic failures.](./command-outcomes.md#tightscript-req-005)
 export function createTypeScriptAnalysis(selectedFiles, cwd = process.cwd()) {
   const currentDirectory = resolve(cwd);
   const selectedPaths = new Map(

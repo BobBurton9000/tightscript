@@ -262,6 +262,11 @@ function syntaxStyleViolations(selectedFile, checker) {
 }
 
 /** Find REQ-031, REQ-032, and REQ-033 violations in selected source files. */
+// @see [Tightscript: syntax-style findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: syntax analysis flags function and method names beginning with lowercase `get`.](./syntax-style.md#tightscript-req-031)
+// @see [Tightscript: syntax analysis reports each `else` and `else if` branch.](./syntax-style.md#tightscript-req-032)
+// @see [Tightscript: syntax analysis enforces multiline layout for multi-parameter function-like nodes.](./syntax-style.md#tightscript-req-033)
+// @see [Tightscript: syntax-style findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 export function findSyntaxStyleViolations(analysis) {
   const violations = [];
 

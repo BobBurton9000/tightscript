@@ -138,6 +138,10 @@ function violationsForClass(selectedFile, classDeclaration) {
 }
 
 /** Find REQ-022 violations in class declarations and expressions. */
+// @see [Tightscript: private-state findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: class analysis enforces private instance state outside DTOs.](./class-state.md#tightscript-req-022)
+// @see [Tightscript: class analysis applies the DTO exception only to its approved parameter-property shape.](./class-state.md#tightscript-req-023)
+// @see [Tightscript: private-state findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 export function findPrivateInstanceStateViolations(sourceFiles) {
   const violations = [];
 

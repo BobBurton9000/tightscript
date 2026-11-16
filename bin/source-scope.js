@@ -78,6 +78,9 @@ function shouldIgnoreMissingSymlinkTarget(error) {
  * Resolve positive include patterns against a CWD, following directory symlinks.
  * Results retain the first sorted matching path while deduplicating by real path.
  */
+// @see [Tightscript: the resolver expands CWD-relative patterns to matching `.ts` and `.tsx` files.](./source-scope.md#tightscript-req-006)
+// @see [Tightscript: the resolver inspects every source file matched from the invocation directory.](./source-scope.md#tightscript-prop-req-006-01)
+// @see [Tightscript: the resolver applies generated patterns to all matching TypeScript paths.](./configuration.md#tightscript-prop-req-037-01)
 export async function resolveSourceFiles(includePatterns, cwd = process.cwd()) {
   if (!Array.isArray(includePatterns) || includePatterns.length === 0) {
     throw new TypeError("Source-scope patterns must be a non-empty array.");

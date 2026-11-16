@@ -69,6 +69,10 @@ function intersectionViolation(selectedFile, typeNode) {
 }
 
 /** Find REQ-027 and REQ-028 violations in selected source annotations. */
+// @see [Tightscript: annotation findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: annotation analysis rejects anonymous object types in function contracts.](./type-annotations.md#tightscript-req-027)
+// @see [Tightscript: annotation analysis rejects intersection property and parameter types.](./type-annotations.md#tightscript-req-028)
+// @see [Tightscript: annotation findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 export function findTypeAnnotationViolations(sourceFiles) {
   const violations = [];
 

@@ -551,6 +551,12 @@ function callableExportViolations(analysis, selectedFile) {
 }
 
 /** Find REQ-018, REQ-020, and REQ-021 violations in the selected TypeScript modules. */
+// @see [Tightscript: export findings include their file, source location, and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: export analysis rejects callable values through direct and re-export routes.](./exports.md#tightscript-req-018)
+// @see [Tightscript: export analysis rejects local values exposed through separate export lists.](./exports.md#tightscript-req-020)
+// @see [Tightscript: export analysis rejects object-shaped constant and default exports.](./exports.md#tightscript-req-021)
+// @see [Tightscript: export findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [Tightscript: export analysis checks callable values across direct and re-export routes.](./exports.md#tightscript-prop-req-018-01)
 export function findExportViolations(analysis) {
   const violations = [];
 

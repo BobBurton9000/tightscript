@@ -5,6 +5,9 @@ import { resolve } from "node:path";
 
 const CONFIG_FILENAME = "tightscript.config.json";
 
+// @see [Tightscript: config parsing rejects settings that could weaken the fixed policy.](./configuration.md#tightscript-req-008)
+// @see [Tightscript: config parsing rejects absent or empty include settings.](./configuration.md#tightscript-req-039)
+// @see [Tightscript: config parsing rejects every policy-weakening setting.](./configuration.md#tightscript-prop-req-008-01)
 function configurationFromJson(contents) {
   let configuration;
   try {
@@ -46,6 +49,10 @@ function configurationFromJson(contents) {
   return configuration;
 }
 
+// @see [Tightscript: init writes default recursive patterns for `.ts` and `.tsx` files.](./configuration.md#tightscript-req-037)
+// @see [Tightscript: init creates the config exclusively and refuses to replace an existing file.](./configuration.md#tightscript-req-038)
+// @see [Tightscript: init creates a non-empty default scope for TypeScript sources.](./configuration.md#tightscript-prop-req-037-01)
+// @see [Tightscript: exclusive creation preserves any existing configuration unchanged.](./configuration.md#tightscript-prop-req-038-01)
 async function initializeConfiguration() {
   const configPath = resolve(process.cwd(), CONFIG_FILENAME);
   const configurationContents = `${JSON.stringify(
@@ -105,6 +112,14 @@ async function initializeConfiguration() {
   process.stdout.write(`Created ${CONFIG_FILENAME}.\n`);
 }
 
+// @see [Tightscript: the CLI maps completed checks to a result and matching exit status.](./command-outcomes.md#tightscript-req-001)
+// @see [Tightscript: the CLI passes a complete clean check, including an empty selection.](./command-outcomes.md#tightscript-req-002)
+// @see [Tightscript: the CLI fails when policy findings exist.](./command-outcomes.md#tightscript-req-003)
+// @see [Tightscript: the CLI prints findings with their file, source location, and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: the CLI turns evaluation errors into failed, nonzero checks.](./command-outcomes.md#tightscript-req-005)
+// @see [Tightscript: the CLI fails when config or a non-empty CWD scope is missing.](./configuration.md#tightscript-req-039)
+// @see [Tightscript: the CLI reports PASS only after complete evaluation with no violations.](./command-outcomes.md#tightscript-prop-req-001-01)
+// @see [Tightscript: the CLI renders each finding with its source and rule identity.](./diagnostics.md#tightscript-prop-req-004-01)
 async function main() {
   if (process.argv[2] === "init") {
     await initializeConfiguration();

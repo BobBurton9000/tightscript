@@ -248,6 +248,11 @@ function declarationCountViolation(selectedFile) {
 }
 
 /** Find exported-name, effective-line-count, and declaration-count violations. */
+// @see [Tightscript: file-structure findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: file analysis compares exported named declarations with the file basename.](./file-structure.md#tightscript-req-015)
+// @see [Tightscript: file analysis counts effective lines and excludes only import-only lines.](./file-structure.md#tightscript-req-016)
+// @see [Tightscript: file analysis rejects a second class, class expression, or interface.](./file-structure.md#tightscript-req-017)
+// @see [Tightscript: file-structure findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 export function findFileStructureViolations(sourceFiles) {
   const violations = [];
 

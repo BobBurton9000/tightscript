@@ -18,6 +18,10 @@ function diagnosticAt(selectedFile, node, requirementId, message) {
 }
 
 /** Find every type-alias declaration and union type in selected source files. */
+// @see [Tightscript: type-syntax findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: type-syntax analysis rejects every type alias declaration.](./type-syntax.md#tightscript-req-029)
+// @see [Tightscript: type-syntax analysis rejects every union type node.](./type-syntax.md#tightscript-req-030)
+// @see [Tightscript: type-syntax findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 export function findTypeAliasAndUnionViolations(sourceFiles) {
   const violations = [];
 

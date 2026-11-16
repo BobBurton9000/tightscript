@@ -176,6 +176,12 @@ function stringOccurrencesFrom(sourceFiles) {
 }
 
 /** Find REQ-034 violations across every selected source file. */
+// @see [Tightscript: repeated-string findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: string analysis reports all eligible values meeting the global threshold.](./repeated-strings.md#tightscript-req-034)
+// @see [Tightscript: string analysis omits the literal forms excluded by policy.](./repeated-strings.md#tightscript-req-035)
+// @see [Tightscript: string analysis excludes direct comparisons against unary `typeof`.](./repeated-strings.md#tightscript-req-036)
+// @see [Tightscript: repeated-string findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [Tightscript: string analysis counts eligible literals across all selected files.](./repeated-strings.md#tightscript-prop-req-034-01)
 export function findRepeatedStringViolations(analysis) {
   const violations = [];
   const occurrencesByValue = stringOccurrencesFrom(analysis.sourceFiles);

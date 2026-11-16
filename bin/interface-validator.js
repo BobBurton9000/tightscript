@@ -236,6 +236,11 @@ function violationsForInterface(analysis, selectedFile, interfaceDeclaration) {
 }
 
 /** Find REQ-024 and REQ-026 violations in selected interface declarations. */
+// @see [Tightscript: interface findings include their file, source location, and requirement ID.](./diagnostics.md#tightscript-req-004)
+// @see [Tightscript: interface analysis rejects data properties and direct or inherited call/construct signatures.](./interfaces.md#tightscript-req-024)
+// @see [Tightscript: interface analysis rejects explicit `CallableFunction` heritage.](./interfaces.md#tightscript-req-026)
+// @see [Tightscript: interface findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [Tightscript: interface analysis checks declared and inherited prohibited signatures.](./interfaces.md#tightscript-prop-req-024-01)
 export function findInterfaceViolations(analysis) {
   const violations = [];
 
