@@ -1,0 +1,7 @@
+# 2026-11-16 — Tightscript TASK-020 compatibility matrix
+
+- Type: Compatibility verification
+- Scope: Tightscript real-CLI integration suite and Node.js/TypeScript support ranges (TASK-020).
+- Context and evidence: The approved task targets Node.js `^24.0.0 || ^26.0.0` and TypeScript Compiler API `>=5.9.0 <7.0.0`. `package.json` declares those exact ranges, and the package-metadata test asserts them. npm does not publish a stable `typescript@5.9.0`; the earliest published stable release in the 5.9 line is 5.9.2. At verification time, 6.0.3 was the latest published TypeScript 6.x release.
+- Decision or change: Ran `npm test` for all four combinations in an isolated copy of the current implementation and test tree, installing each TypeScript version only in that copy. The matrix used Node.js 24.22.3 and 26.13.1 with TypeScript 5.9.2 and 6.0.3. No implementation or test source changes were needed.
+- Observed result: All four runs passed all 142 tests with zero failures, skips, or cancellations: Node.js 24.22.3 / TypeScript 5.9.2; Node.js 26.13.1 / TypeScript 5.9.2; Node.js 24.22.3 / TypeScript 6.0.3; Node.js 26.13.1 / TypeScript 6.0.3. The suite's `PROP-REQ-001-01` and `REQ-005` CLI cases verified fail-closed output and nonzero status for source-scope errors, parse failures, malformed compiler configuration, and unresolved required semantic information in each combination. The exact `5.9.0` version was unavailable from npm; verification used the earliest published stable 5.9 release, 5.9.2.
