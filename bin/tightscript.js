@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 
-import { readFile } from "node:fs/promises";
+import { open, readFile, unlink } from "node:fs/promises";
 import { resolve } from "node:path";
 
 const CONFIG_FILENAME = "tightscript.config.json";
@@ -46,7 +46,71 @@ function configurationFromJson(contents) {
   return configuration;
 }
 
+async function initializeConfiguration() {
+  const configPath = resolve(process.cwd(), CONFIG_FILENAME);
+  const configurationContents = `${JSON.stringify(
+    { include: ["**/*.ts", "**/*.tsx"] },
+    null,
+    2,
+  )}\n`;
+  let configurationHandle;
+
+  try {
+    configurationHandle = await open(configPath, "wx");
+  } catch (error) {
+    if (error.code === "EEXIST") {
+      process.stderr.write(
+        `FAIL: Initialization error: ${CONFIG_FILENAME} already exists; it was not modified.\n`,
+      );
+    } else {
+      process.stderr.write(
+        `FAIL: Initialization error: Could not create ${CONFIG_FILENAME}: ${error.message}\n`,
+      );
+    }
+    process.exitCode = 1;
+    return;
+  }
+
+  let initializationError;
+  try {
+    await configurationHandle.writeFile(configurationContents, "utf8");
+  } catch (error) {
+    initializationError = error;
+  }
+
+  try {
+    await configurationHandle.close();
+  } catch (error) {
+    initializationError ??= error;
+  }
+
+  if (initializationError !== undefined) {
+    let cleanupError;
+    try {
+      await unlink(configPath);
+    } catch (error) {
+      cleanupError = error;
+    }
+    const cleanupMessage =
+      cleanupError === undefined || cleanupError.code === "ENOENT"
+        ? ""
+        : ` Could not remove the partial file: ${cleanupError.message}.`;
+    process.stderr.write(
+      `FAIL: Initialization error: Could not write ${CONFIG_FILENAME}: ${initializationError.message}.${cleanupMessage}\n`,
+    );
+    process.exitCode = 1;
+    return;
+  }
+
+  process.stdout.write(`Created ${CONFIG_FILENAME}.\n`);
+}
+
 async function main() {
+  if (process.argv[2] === "init") {
+    await initializeConfiguration();
+    return;
+  }
+
   const configPath = resolve(process.cwd(), CONFIG_FILENAME);
   let configurationContents;
 
