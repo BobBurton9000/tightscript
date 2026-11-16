@@ -150,3 +150,35 @@ test("[PROP-REQ-034-01] all REQ-035 and REQ-036 exclusions remain excluded acros
   assert.equal(result.stdout, "PASS\n");
   assert.equal(result.stderr, "");
 });
+
+test("[PROP-REQ-034-01] static re-export module specifiers count as eligible repeated strings", (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  project.writeFile("src/Types.ts", "export interface Types {}\n");
+  for (const fileName of ["ReexportA.ts", "ReexportB.ts", "ReexportC.ts"]) {
+    project.writeFile(
+      `src/${fileName}`,
+      'export type { Types } from "./Types.js";\n',
+    );
+  }
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  const diagnostics = result.stderr
+    .split("\n")
+    .filter((line) => line.includes("[REQ-034]"));
+  assert.equal(diagnostics.length, 3, result.stderr);
+  assert.deepEqual(
+    diagnostics.map((line) => line.match(/^(.*:\d+):\d+ \[REQ-034\]/)?.[1]),
+    [
+      "src/ReexportA.ts:1",
+      "src/ReexportB.ts:1",
+      "src/ReexportC.ts:1",
+    ],
+  );
+  assert.match(result.stderr, /\nFAIL\n$/);
+});

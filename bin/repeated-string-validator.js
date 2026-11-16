@@ -69,10 +69,7 @@ function isPropertyOrMethodKey(node) {
 
 function isStaticModuleSpecifier(node) {
   const parent = node.parent;
-  return (
-    (ts.isImportDeclaration(parent) || ts.isExportDeclaration(parent)) &&
-    parent.moduleSpecifier === node
-  );
+  return ts.isImportDeclaration(parent) && parent.moduleSpecifier === node;
 }
 
 function isDynamicImportModuleSpecifier(node) {
