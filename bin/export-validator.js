@@ -455,7 +455,11 @@ function routeForExport(exportName, routes, starExports) {
   return undefined;
 }
 
-function callableExportViolations(analysis, selectedFile) {
+function callableExportViolations(
+  analysis,
+  selectedFile,
+  eligibleReq018Routes,
+) {
   const { sourceFile, displayPath } = selectedFile;
   if (!ts.isExternalModule(sourceFile)) {
     return [];
@@ -491,7 +495,7 @@ function callableExportViolations(analysis, selectedFile) {
   for (const exportedSymbol of exportedSymbols) {
     const exportName = exportedSymbol.getName();
     const route = routeForExport(exportName, routes, starExports);
-    if (route === undefined) {
+    if (route === undefined || eligibleReq018Routes?.has(route) === true) {
       continue;
     }
 
@@ -557,12 +561,19 @@ function callableExportViolations(analysis, selectedFile) {
 // @see [Tightscript: export analysis rejects object-shaped constant and default exports.](./exports.md#tightscript-req-021)
 // @see [Tightscript: export findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 // @see [Tightscript: export analysis checks callable values across direct and re-export routes.](./exports.md#tightscript-prop-req-018-01)
-export function findExportViolations(analysis) {
+export function findExportViolations(analysis, compatibility) {
   const violations = [];
+  const eligibleReq018Routes = compatibility?.eligibleReq018Routes;
 
   for (const selectedFile of analysis.sourceFiles) {
     const localValues = localValueDeclarations(selectedFile.sourceFile);
-    violations.push(...callableExportViolations(analysis, selectedFile));
+    violations.push(
+      ...callableExportViolations(
+        analysis,
+        selectedFile,
+        eligibleReq018Routes,
+      ),
+    );
     violations.push(...localExportListViolations(selectedFile, localValues));
     violations.push(...exportedObjectViolations(selectedFile, localValues));
   }

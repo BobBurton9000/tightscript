@@ -183,6 +183,8 @@ async function main() {
         { findTypeAliasAndUnionViolations },
         { findSyntaxStyleViolations },
         { findRepeatedStringViolations },
+        { analyzeFrameworkCompatibility },
+        { resolveFrameworkContext },
       ] = await Promise.all([
         import("./comment-validator.js"),
         import("./typescript-analysis.js"),
@@ -196,13 +198,36 @@ async function main() {
         import("./type-alias-union-validator.js"),
         import("./syntax-style-validator.js"),
         import("./repeated-string-validator.js"),
+        import("./compatibility-analyser.js"),
+        import("./framework-context.js"),
       ]);
       const analysis = createTypeScriptAnalysis(selectedFiles);
       try {
+        let compatibility;
+        try {
+          const frameworkContext = resolveFrameworkContext(process.cwd());
+          const hasConfiguredJsx =
+            analysis.program?.getCompilerOptions().jsx !== undefined;
+          if (frameworkContext.next.status !== "absent" || hasConfiguredJsx) {
+            compatibility = analyzeFrameworkCompatibility(analysis, {
+              cwd: process.cwd(),
+              frameworkContext,
+            });
+          }
+        } catch (error) {
+          analysis.evaluationErrors.push({
+            kind: "framework-compatibility",
+            message:
+              `Could not complete framework compatibility analysis: ${
+                error instanceof Error ? error.message : String(error)
+              }`,
+          });
+        }
+
         policyViolations = [
           ...findLetDeclarationViolations(analysis.sourceFiles),
           ...findFileStructureViolations(analysis.sourceFiles),
-          ...findExportViolations(analysis),
+          ...findExportViolations(analysis, compatibility),
           ...findImportedValueViolations(analysis),
           ...findPrivateInstanceStateViolations(analysis.sourceFiles),
           ...findInterfaceViolations(analysis),
