@@ -1,3 +1,4 @@
 .specflow
 .agents
 .pi
+node_modules/

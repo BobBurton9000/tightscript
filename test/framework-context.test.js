@@ -2,7 +2,10 @@ import assert from "node:assert/strict";
 import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import test from "node:test";
-import { resolveFrameworkContext } from "../bin/framework-context.js";
+import {
+  classifyNextModule,
+  resolveFrameworkContext,
+} from "../bin/framework-context.js";
 import { createTemporaryProject } from "../test-support/temp-project.js";
 
 function installNext(project, version, entryContents = "module.exports = {};\n") {
@@ -11,6 +14,20 @@ function installNext(project, version, entryContents = "module.exports = {};\n")
     JSON.stringify({ name: "next", version, main: "index.js" }),
   );
   project.writeFile("node_modules/next/index.js", entryContents);
+}
+
+function createSupportedNextProject(testContext, version = "16.2.0") {
+  const project = createTemporaryProject(testContext);
+  installNext(project, version);
+  return project;
+}
+
+function classifyFromProject(
+  project,
+  relativePath,
+  frameworkContext = resolveFrameworkContext(project.cwd),
+) {
+  return classifyNextModule(relativePath, project.cwd, frameworkContext);
 }
 
 test("framework context treats an unresolved Next.js package as absent [REQ-005, REQ-006]", (t) => {
@@ -135,4 +152,287 @@ test("dynamic routing configuration is indeterminate and is never executed [REQ-
 
   assert.deepEqual(context.routingConfiguration, { status: "indeterminate" });
   assert.equal(projectPathExists(project.cwd, "configuration-executed"), false);
+});
+
+test("Next.js 16 classifies every listed router role and callable export [REQ-005, REQ-006, REQ-009]", async (t) => {
+  const project = createSupportedNextProject(t);
+  const defaultExport = ["default"];
+  const pageExports = [
+    "default",
+    "generateMetadata",
+    "generateViewport",
+    "generateStaticParams",
+  ];
+  const routeExports = [
+    "GET",
+    "HEAD",
+    "OPTIONS",
+    "POST",
+    "PUT",
+    "PATCH",
+    "DELETE",
+  ];
+  const pageRouteExports = [
+    "default",
+    "getStaticProps",
+    "getStaticPaths",
+    "getServerSideProps",
+  ];
+  const tableCases = [
+    {
+      path: "app/page.tsx",
+      routers: ["app"],
+      role: "app-page",
+      moduleName: "page",
+      exportNames: pageExports,
+    },
+    {
+      path: "app/dashboard/layout.tsx",
+      routers: ["app"],
+      role: "app-layout",
+      moduleName: "layout",
+      exportNames: pageExports,
+    },
+    ...[
+      "template",
+      "default",
+      "error",
+      "global-error",
+      "not-found",
+      "loading",
+      "forbidden",
+      "unauthorized",
+    ].map((moduleName) => ({
+      path: `app/dashboard/${moduleName}.tsx`,
+      routers: ["app"],
+      role: "app-component",
+      moduleName,
+      exportNames: defaultExport,
+    })),
+    {
+      path: "app/blog/[slug]/route.ts",
+      routers: ["app"],
+      role: "app-route-handler",
+      moduleName: "route",
+      exportNames: routeExports,
+    },
+    {
+      path: "pages/index.tsx",
+      routers: ["pages"],
+      role: "pages-page-route",
+      moduleName: "index",
+      exportNames: pageRouteExports,
+    },
+    {
+      path: "pages/blog/[slug].tsx",
+      routers: ["pages"],
+      role: "pages-page-route",
+      moduleName: "[slug]",
+      exportNames: pageRouteExports,
+    },
+    {
+      path: "pages/api/users/[id].ts",
+      routers: ["pages"],
+      role: "pages-api-route",
+      moduleName: "[id]",
+      exportNames: defaultExport,
+    },
+    ...["_app", "_document", "_error", "404", "500"].map(
+      (moduleName) => ({
+        path: `pages/${moduleName}.tsx`,
+        routers: ["pages"],
+        role: "pages-special-module",
+        moduleName,
+        exportNames: defaultExport,
+      }),
+    ),
+  ];
+
+  for (const tableCase of tableCases) {
+    project.writeFile(tableCase.path, "");
+  }
+  const context = resolveFrameworkContext(project.cwd);
+
+  for (const tableCase of tableCases) {
+    await t.test(`${tableCase.path} exposes only its table entries`, () => {
+      const { path, ...expected } = tableCase;
+      const classification = classifyFromProject(project, path, context);
+
+      assert.deepEqual(classification, expected);
+      for (const exportName of expected.exportNames) {
+        assert.ok(classification.exportNames.includes(exportName));
+      }
+      assert.equal(classification.exportNames.includes("notListed"), false);
+    });
+  }
+});
+
+test("project-level proxy is classified for either router and supported src layouts [REQ-005, REQ-006]", async (t) => {
+  const proxyCases = [
+    { source: "app/page.tsx", proxy: "proxy.ts", routers: ["app"] },
+    { source: "pages/index.tsx", proxy: "proxy.ts", routers: ["pages"] },
+    {
+      source: "app/page.tsx",
+      secondSource: "pages/index.tsx",
+      proxy: "proxy.ts",
+      routers: ["app", "pages"],
+    },
+    {
+      source: "src/app/page.tsx",
+      proxy: "src/proxy.ts",
+      routers: ["app"],
+    },
+    {
+      source: "src/pages/index.tsx",
+      proxy: "src/proxy.ts",
+      routers: ["pages"],
+    },
+  ];
+
+  for (const scenario of proxyCases) {
+    await t.test(`${scenario.proxy} with ${scenario.routers.join(" and ")}`, (subtest) => {
+      const project = createSupportedNextProject(subtest);
+      project.writeFile(scenario.source, "");
+      if (scenario.secondSource !== undefined) {
+        project.writeFile(scenario.secondSource, "");
+      }
+      project.writeFile(scenario.proxy, "");
+
+      assert.deepEqual(
+        classifyFromProject(project, scenario.proxy),
+        {
+          routers: scenario.routers,
+          role: "project-proxy",
+          moduleName: "proxy",
+          exportNames: ["default", "proxy"],
+        },
+      );
+    });
+  }
+});
+
+test("root router directories take precedence over their src equivalents [REQ-005, REQ-006]", (t) => {
+  const project = createSupportedNextProject(t);
+  for (const path of [
+    "app/page.tsx",
+    "src/app/page.tsx",
+    "pages/index.tsx",
+    "src/pages/index.tsx",
+  ]) {
+    project.writeFile(path, "");
+  }
+  const context = resolveFrameworkContext(project.cwd);
+
+  assert.equal(
+    classifyFromProject(project, "app/page.tsx", context).role,
+    "app-page",
+  );
+  assert.equal(
+    classifyFromProject(project, "pages/index.tsx", context).role,
+    "pages-page-route",
+  );
+  assert.equal(classifyFromProject(project, "src/app/page.tsx", context), null);
+  assert.equal(classifyFromProject(project, "src/pages/index.tsx", context), null);
+});
+
+test("nested routes and src router roots are classified only in active layouts [REQ-005, REQ-006]", (t) => {
+  const project = createSupportedNextProject(t);
+  project.writeFile("src/app/shop/[id]/page.tsx", "");
+  project.writeFile("src/pages/shop/[id].tsx", "");
+  project.writeFile("src/proxy.ts", "");
+  const context = resolveFrameworkContext(project.cwd);
+
+  assert.deepEqual(
+    classifyFromProject(project, "src/app/shop/[id]/page.tsx", context),
+    {
+      routers: ["app"],
+      role: "app-page",
+      moduleName: "page",
+      exportNames: [
+        "default",
+        "generateMetadata",
+        "generateViewport",
+        "generateStaticParams",
+      ],
+    },
+  );
+  assert.deepEqual(
+    classifyFromProject(project, "src/pages/shop/[id].tsx", context),
+    {
+      routers: ["pages"],
+      role: "pages-page-route",
+      moduleName: "[id]",
+      exportNames: [
+        "default",
+        "getStaticProps",
+        "getStaticPaths",
+        "getServerSideProps",
+      ],
+    },
+  );
+  assert.deepEqual(classifyFromProject(project, "src/proxy.ts", context).routers, [
+    "app",
+    "pages",
+  ]);
+});
+
+test("unlisted names, paths, extensions, and Next contexts receive no table role [REQ-005, REQ-006, REQ-009]", async (t) => {
+  const unsupportedCases = [
+    {
+      name: "unresolved Next.js package",
+      setup(project) {},
+    },
+    {
+      name: "unsupported Next.js major",
+      setup(project) {
+        installNext(project, "15.4.1");
+      },
+    },
+    {
+      name: "changed pageExtensions",
+      setup(project) {
+        installNext(project, "16.2.0");
+        project.writeFile(
+          "next.config.js",
+          'module.exports = { pageExtensions: ["page.tsx"] };\n',
+        );
+      },
+    },
+    {
+      name: "indeterminate pageExtensions",
+      setup(project) {
+        installNext(project, "16.2.0");
+        project.writeFile(
+          "next.config.js",
+          'module.exports = { pageExtensions: process.env.PAGE_EXTENSIONS };\n',
+        );
+      },
+    },
+  ];
+
+  for (const scenario of unsupportedCases) {
+    await t.test(scenario.name, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      scenario.setup(project);
+      project.writeFile("app/page.tsx", "");
+
+      assert.equal(classifyFromProject(project, "app/page.tsx"), null);
+    });
+  }
+
+  const project = createSupportedNextProject(t);
+  for (const path of [
+    "app/middleware.ts",
+    "app/blog/proxy.ts",
+    "app/page.jsx",
+    "pages/api/users/[id].js",
+  ]) {
+    project.writeFile(path, "");
+    assert.equal(classifyFromProject(project, path), null, path);
+  }
+  project.writeFile("app/page.tsx", "");
+  assert.equal(
+    classifyFromProject(project, "../outside/app/page.tsx"),
+    null,
+  );
 });

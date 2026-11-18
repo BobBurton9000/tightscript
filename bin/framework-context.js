@@ -3,6 +3,7 @@ import { createRequire } from "node:module";
 import {
   basename,
   dirname,
+  extname,
   isAbsolute,
   join,
   relative,
@@ -20,6 +21,60 @@ const NEXT_CONFIG_FILENAMES = [
   "next.config.cts",
 ];
 const DEFAULT_PAGE_EXTENSIONS = ["tsx", "ts", "jsx", "js"];
+const NEXT16_COMPATIBILITY_TABLE = Object.freeze({
+  app: Object.freeze({
+    componentModules: Object.freeze([
+      "template",
+      "default",
+      "error",
+      "global-error",
+      "not-found",
+      "loading",
+      "forbidden",
+      "unauthorized",
+    ]),
+    pageExports: Object.freeze([
+      "default",
+      "generateMetadata",
+      "generateViewport",
+      "generateStaticParams",
+    ]),
+    layoutExports: Object.freeze([
+      "default",
+      "generateMetadata",
+      "generateViewport",
+      "generateStaticParams",
+    ]),
+    routeExports: Object.freeze([
+      "GET",
+      "HEAD",
+      "OPTIONS",
+      "POST",
+      "PUT",
+      "PATCH",
+      "DELETE",
+    ]),
+  }),
+  pages: Object.freeze({
+    pageExports: Object.freeze([
+      "default",
+      "getStaticProps",
+      "getStaticPaths",
+      "getServerSideProps",
+    ]),
+    specialModules: Object.freeze([
+      "_app",
+      "_document",
+      "_error",
+      "404",
+      "500",
+    ]),
+    apiExports: Object.freeze(["default"]),
+    specialExports: Object.freeze(["default"]),
+  }),
+  proxyExports: Object.freeze(["default", "proxy"]),
+});
+const SUPPORTED_SOURCE_EXTENSIONS = new Set([".ts", ".tsx"]);
 const PACKAGE_RESOLUTION_ANCHOR = "__tightscript_framework_context__.cjs";
 
 function isPathWithin(directoryPath, candidatePath) {
@@ -505,6 +560,196 @@ function routingConfigurationFor(cwd, readTextFile) {
     return { status: "indeterminate" };
   }
   return classifyConfigSource(contents, configPaths[0]);
+}
+
+function directoryState(directoryPath) {
+  try {
+    return statSync(directoryPath).isDirectory() ? "directory" : "absent";
+  } catch (error) {
+    if (error.code === "ENOENT" || error.code === "ENOTDIR") {
+      return "absent";
+    }
+    return "indeterminate";
+  }
+}
+
+function activeRouterRoots(cwd) {
+  const roots = [];
+  for (const router of ["app", "pages"]) {
+    const rootPath = join(cwd, router);
+    const rootState = directoryState(rootPath);
+    if (rootState === "indeterminate") {
+      return undefined;
+    }
+    if (rootState === "directory") {
+      roots.push({ router, layout: "root", path: rootPath });
+      continue;
+    }
+
+    const srcPath = join(cwd, "src", router);
+    const srcState = directoryState(srcPath);
+    if (srcState === "indeterminate") {
+      return undefined;
+    }
+    if (srcState === "directory") {
+      roots.push({ router, layout: "src", path: srcPath });
+    }
+  }
+  return roots;
+}
+
+function nextModuleClassification(routers, role, moduleName, exportNames) {
+  return {
+    routers,
+    role,
+    moduleName,
+    exportNames: [...exportNames],
+  };
+}
+
+function classifyProjectProxy(modulePath, cwd, roots, moduleName) {
+  const relativePath = relative(cwd, modulePath).split(sep);
+  const isProjectRootModule = relativePath.length === 1;
+  const isSrcModule =
+    relativePath.length === 2 && relativePath[0] === "src";
+  if (!isProjectRootModule && !isSrcModule) {
+    return null;
+  }
+
+  const applicableRoots = roots.filter(
+    (root) => isProjectRootModule || root.layout === "src",
+  );
+  if (applicableRoots.length === 0) {
+    return null;
+  }
+
+  return nextModuleClassification(
+    [...new Set(applicableRoots.map((root) => root.router))],
+    "project-proxy",
+    moduleName,
+    NEXT16_COMPATIBILITY_TABLE.proxyExports,
+  );
+}
+
+function classifyNextRouterModule(modulePath, roots, moduleName) {
+  const activeRoot = roots.find(
+    (root) => isPathWithin(root.path, modulePath) && root.path !== modulePath,
+  );
+  if (activeRoot === undefined) {
+    return null;
+  }
+
+  const relativePath = relative(activeRoot.path, modulePath);
+  const segments = relativePath.split(sep);
+  if (segments.some((segment) => segment === "..")) {
+    return null;
+  }
+
+  if (activeRoot.router === "app") {
+    const appTable = NEXT16_COMPATIBILITY_TABLE.app;
+    if (moduleName === "page") {
+      return nextModuleClassification(
+        ["app"],
+        "app-page",
+        moduleName,
+        appTable.pageExports,
+      );
+    }
+    if (moduleName === "layout") {
+      return nextModuleClassification(
+        ["app"],
+        "app-layout",
+        moduleName,
+        appTable.layoutExports,
+      );
+    }
+    if (moduleName === "route") {
+      return nextModuleClassification(
+        ["app"],
+        "app-route-handler",
+        moduleName,
+        appTable.routeExports,
+      );
+    }
+    if (appTable.componentModules.includes(moduleName)) {
+      return nextModuleClassification(
+        ["app"],
+        "app-component",
+        moduleName,
+        ["default"],
+      );
+    }
+    return null;
+  }
+
+  const pagesTable = NEXT16_COMPATIBILITY_TABLE.pages;
+  if (segments[0] === "api" && segments.length > 1) {
+    return nextModuleClassification(
+      ["pages"],
+      "pages-api-route",
+      moduleName,
+      pagesTable.apiExports,
+    );
+  }
+  if (segments.length === 1 && pagesTable.specialModules.includes(moduleName)) {
+    return nextModuleClassification(
+      ["pages"],
+      "pages-special-module",
+      moduleName,
+      pagesTable.specialExports,
+    );
+  }
+  return nextModuleClassification(
+    ["pages"],
+    "pages-page-route",
+    moduleName,
+    pagesTable.pageExports,
+  );
+}
+
+/** Classify a selected file against the closed Next.js 16.x convention table. */
+export function classifyNextModule(
+  filePath,
+  cwd = process.cwd(),
+  frameworkContext = resolveFrameworkContext(cwd),
+) {
+  const currentDirectory = resolve(cwd);
+  if (
+    frameworkContext?.next?.status !== "supported" ||
+    frameworkContext.next.major !== 16 ||
+    frameworkContext.routingConfiguration?.status !== "default"
+  ) {
+    return null;
+  }
+
+  const absoluteFilePath = resolve(currentDirectory, filePath);
+  if (
+    !isPathWithin(currentDirectory, absoluteFilePath) ||
+    !SUPPORTED_SOURCE_EXTENSIONS.has(extname(absoluteFilePath))
+  ) {
+    return null;
+  }
+
+  const roots = activeRouterRoots(currentDirectory);
+  if (roots === undefined) {
+    return null;
+  }
+
+  const moduleName = basename(absoluteFilePath, extname(absoluteFilePath));
+  const proxy =
+    moduleName === "proxy"
+      ? classifyProjectProxy(
+          absoluteFilePath,
+          currentDirectory,
+          roots,
+          moduleName,
+        )
+      : null;
+  if (proxy !== null) {
+    return proxy;
+  }
+
+  return classifyNextRouterModule(absoluteFilePath, roots, moduleName);
 }
 
 /** Resolve Next.js package context and statically inspect routing-role configuration. */
