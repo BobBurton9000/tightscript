@@ -7,7 +7,8 @@
     "tightscript": "./bin/tightscript.js"
   },
   "files": [
-    "bin"
+    "bin",
+    "docs/writing-code-that-passes-tightscript.md"
   ],
   "scripts": {
     "test": "node --test"
