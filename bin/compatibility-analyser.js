@@ -1234,6 +1234,18 @@ function bindingName(declaration) {
 }
 
 /** Analyse callable exports for the approved React and Next.js compatibility exceptions. */
+// @see [react-next-compatibility: the analyser evaluates only source files already selected for TypeScript analysis.](./framework-compatibility.md#react-next-compatibility-req-001)
+// @see [react-next-compatibility: the analyser consumes the include-selected roots without expanding the source set.](./framework-compatibility.md#react-next-compatibility-req-002)
+// @see [react-next-compatibility: the analyser requires checker-accepted JSX and proven same-file React implementations.](./framework-compatibility.md#react-next-compatibility-req-004)
+// @see [react-next-compatibility: the analyser grants Next.js eligibility only for listed roles, exports, and local implementations.](./framework-compatibility.md#react-next-compatibility-req-005)
+// @see [react-next-compatibility: unsupported or unresolved Next.js cases remain ineligible or incomplete.](./framework-compatibility.md#react-next-compatibility-req-006)
+// @see [react-next-compatibility: only the exact local Pages Router export declaration enters the REQ-031 exception set.](./framework-compatibility.md#react-next-compatibility-req-009)
+// @see [react-next-compatibility: other lowercase `get` declarations are not added to the exception set.](./framework-compatibility.md#react-next-compatibility-req-010)
+// @see [react-next-compatibility: the analyser marks an export eligible only after every applicable condition succeeds.](./framework-compatibility.md#react-next-compatibility-req-011)
+// @see [react-next-compatibility: unresolved semantic conditions are recorded as incomplete rather than exempted.](./framework-compatibility.md#react-next-compatibility-req-012)
+// @see [react-next-compatibility: the analyser requires positive proof before granting a callable-export exception.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
+// @see [react-next-compatibility: the analyser identifies only exact local Pages Router bindings for REQ-031.](./framework-compatibility.md#react-next-compatibility-prop-req-009-01)
+// @see [react-next-compatibility: the analyser leaves unselected files and semantic probes outside policy roots.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
 export function analyzeFrameworkCompatibility(analysis, options = {}) {
   const cwd = resolve(options.cwd ?? process.cwd());
   let frameworkContext = options.frameworkContext;

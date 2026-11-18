@@ -556,11 +556,18 @@ function callableExportViolations(
 
 /** Find REQ-018, REQ-020, and REQ-021 violations in the selected TypeScript modules. */
 // @see [Tightscript: export findings include their file, source location, and requirement ID.](./diagnostics.md#tightscript-req-004)
-// @see [Tightscript: export analysis rejects callable values through direct and re-export routes.](./exports.md#tightscript-req-018)
+// @see [Tightscript: callable exports are rejected unless an approved framework exception applies.](./exports.md#tightscript-req-018)
 // @see [Tightscript: export analysis rejects local values exposed through separate export lists.](./exports.md#tightscript-req-020)
 // @see [Tightscript: export analysis rejects object-shaped constant and default exports.](./exports.md#tightscript-req-021)
 // @see [Tightscript: export findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
-// @see [Tightscript: export analysis checks callable values across direct and re-export routes.](./exports.md#tightscript-prop-req-018-01)
+// @see [Tightscript: callable exports fail unless a qualifying exception is proven.](./exports.md#tightscript-prop-req-018-01)
+// @see [react-next-compatibility: the exporter skips REQ-018 only for analyser-approved React or Next.js routes.](./framework-compatibility.md#react-next-compatibility-req-004)
+// @see [react-next-compatibility: the exporter applies only Next.js exceptions supported by the closed role table.](./framework-compatibility.md#react-next-compatibility-req-005)
+// @see [react-next-compatibility: the exporter retains all unrelated callable-export and export-list policies.](./framework-compatibility.md#react-next-compatibility-req-003)
+// @see [react-next-compatibility: REQ-019 and REQ-020 continue independently of eligible callable exports.](./framework-compatibility.md#react-next-compatibility-req-007)
+// @see [react-next-compatibility: ineligible callable exports remain subject to REQ-018.](./framework-compatibility.md#react-next-compatibility-req-011)
+// @see [react-next-compatibility: eligible routes suppress only their proven callable-export finding.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
+// @see [react-next-compatibility: other export findings remain after a narrow framework exception.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 export function findExportViolations(analysis, compatibility) {
   const violations = [];
   const eligibleReq018Routes = compatibility?.eligibleReq018Routes;

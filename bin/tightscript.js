@@ -120,6 +120,11 @@ async function initializeConfiguration() {
 // @see [Tightscript: the CLI fails when config or a non-empty CWD scope is missing.](./configuration.md#tightscript-req-039)
 // @see [Tightscript: the CLI reports PASS only after complete evaluation with no violations.](./command-outcomes.md#tightscript-prop-req-001-01)
 // @see [Tightscript: the CLI renders each finding with its source and rule identity.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [react-next-compatibility: the CLI passes only configured include patterns into source resolution.](./framework-compatibility.md#react-next-compatibility-req-002)
+// @see [react-next-compatibility: the CLI runs framework compatibility without disabling unrelated Tightscript policies.](./framework-compatibility.md#react-next-compatibility-req-003)
+// @see [react-next-compatibility: the CLI evaluates export-list and imported-value policies independently of framework eligibility.](./framework-compatibility.md#react-next-compatibility-req-007)
+// @see [react-next-compatibility: incomplete framework semantics become evaluation errors rather than exemptions.](./framework-compatibility.md#react-next-compatibility-req-012)
+// @see [react-next-compatibility: the CLI keeps independent policy findings when a narrow exception applies.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 async function main() {
   if (process.argv[2] === "init") {
     await initializeConfiguration();

@@ -6,9 +6,9 @@ For maintainers changing naming, branch, or parameter-layout checks, this page r
 
 ### TIGHTSCRIPT-REQ-031
 
-- **Title:** Function and method names do not begin with lowercase `get`
+- **Title:** Lowercase `get` names are prohibited outside exact framework exports
 
-WHEN a function or method name in a checked declaration begins with the lowercase prefix `get`, THE SYSTEM SHALL report a violation. This applies to function declarations, function-valued variables, object methods or properties, and class methods.
+WHEN a function or method name in a checked declaration begins with the lowercase prefix `get`, THE SYSTEM SHALL report a violation, unless the declaration is one of the exact locally implemented Pages Router callable exports allowed by the [framework compatibility contract](./framework-compatibility.md#react-next-compatibility-req-009). This applies to function declarations, function-valued variables, object methods or properties, and class methods.
 
 ### TIGHTSCRIPT-REQ-032
 

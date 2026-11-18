@@ -708,6 +708,9 @@ function classifyNextRouterModule(modulePath, roots, moduleName) {
 }
 
 /** Classify a selected file against the closed Next.js 16.x convention table. */
+// @see [react-next-compatibility: the classifier grants roles only from the closed supported Next.js convention table.](./framework-compatibility.md#react-next-compatibility-req-005)
+// @see [react-next-compatibility: unrecognized or unsupported file roles receive no Next.js exception.](./framework-compatibility.md#react-next-compatibility-req-006)
+// @see [react-next-compatibility: the classifier supplies only supported route roles to positive-proof decisions.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
 export function classifyNextModule(
   filePath,
   cwd = process.cwd(),
@@ -753,6 +756,9 @@ export function classifyNextModule(
 }
 
 /** Resolve Next.js package context and statically inspect routing-role configuration. */
+// @see [react-next-compatibility: context resolution establishes the installed Next.js version and routing configuration used by exceptions.](./framework-compatibility.md#react-next-compatibility-req-005)
+// @see [react-next-compatibility: unresolved Next.js context or routing information cannot grant an exception.](./framework-compatibility.md#react-next-compatibility-req-006)
+// @see [react-next-compatibility: framework-context resolution supplies the state used by positive-proof invariants.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
 export function resolveFrameworkContext(cwd = process.cwd(), options = {}) {
   const currentDirectory = resolve(cwd);
   const readTextFile =

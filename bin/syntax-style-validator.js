@@ -277,10 +277,16 @@ function syntaxStyleViolations(
 
 /** Find REQ-031, REQ-032, and REQ-033 violations in selected source files. */
 // @see [Tightscript: syntax-style findings include their source and requirement ID.](./diagnostics.md#tightscript-req-004)
-// @see [Tightscript: syntax analysis flags function and method names beginning with lowercase `get`.](./syntax-style.md#tightscript-req-031)
+// @see [Tightscript: lowercase `get` names are rejected except for approved framework exports.](./syntax-style.md#tightscript-req-031)
 // @see [Tightscript: syntax analysis reports each `else` and `else if` branch.](./syntax-style.md#tightscript-req-032)
 // @see [Tightscript: syntax analysis enforces multiline layout for multi-parameter function-like nodes.](./syntax-style.md#tightscript-req-033)
 // @see [Tightscript: syntax-style findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
+// @see [react-next-compatibility: only an exact local Pages Router callable export enters the REQ-031 exception set.](./framework-compatibility.md#react-next-compatibility-req-009)
+// @see [react-next-compatibility: all other lowercase `get` function and method names remain subject to REQ-031.](./framework-compatibility.md#react-next-compatibility-req-010)
+// @see [react-next-compatibility: the syntax validator preserves unrelated style rules while applying the narrow exception.](./framework-compatibility.md#react-next-compatibility-req-003)
+// @see [react-next-compatibility: an ineligible declaration retains the existing lowercase `get` finding.](./framework-compatibility.md#react-next-compatibility-req-011)
+// @see [react-next-compatibility: exact local binding identity controls the Pages Router naming exception.](./framework-compatibility.md#react-next-compatibility-prop-req-009-01)
+// @see [react-next-compatibility: unrelated syntax findings remain reportable with an eligible declaration.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 export function findSyntaxStyleViolations(analysis, compatibility) {
   const violations = [];
   const eligibleReq031Declarations =

@@ -566,6 +566,9 @@ function importedBindingViolations(analysis, selectedFile) {
 // @see [Tightscript: import analysis rejects unchanged values and behavior-free export wrappers.](./imported-values.md#tightscript-req-019)
 // @see [Tightscript: imported-value findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 // @see [Tightscript: import analysis follows aliases and nested wrappers to identify passthroughs.](./imported-values.md#tightscript-prop-req-019-01)
+// @see [react-next-compatibility: imported-value passthrough violations remain active in React and Next.js modules.](./framework-compatibility.md#react-next-compatibility-req-008)
+// @see [react-next-compatibility: the imported-value validator runs independently of compatibility exemptions.](./framework-compatibility.md#react-next-compatibility-req-007)
+// @see [react-next-compatibility: imported-value findings remain reportable alongside a framework exception.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 export function findImportedValueViolations(analysis) {
   const violations = [];
   for (const selectedFile of analysis.sourceFiles) {

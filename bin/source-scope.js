@@ -81,6 +81,9 @@ function shouldIgnoreMissingSymlinkTarget(error) {
 // @see [Tightscript: the resolver expands CWD-relative patterns to matching `.ts` and `.tsx` files.](./source-scope.md#tightscript-req-006)
 // @see [Tightscript: the resolver inspects every source file matched from the invocation directory.](./source-scope.md#tightscript-prop-req-006-01)
 // @see [Tightscript: the resolver applies generated patterns to all matching TypeScript paths.](./configuration.md#tightscript-prop-req-037-01)
+// @see [react-next-compatibility: the source resolver restricts policy roots to selected `.ts` and `.tsx` files.](./framework-compatibility.md#react-next-compatibility-req-001)
+// @see [react-next-compatibility: the resolver uses positive include patterns as its only source selector.](./framework-compatibility.md#react-next-compatibility-req-002)
+// @see [react-next-compatibility: the source-scope resolver does not add unselected paths to policy roots.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
 export async function resolveSourceFiles(includePatterns, cwd = process.cwd()) {
   if (!Array.isArray(includePatterns) || includePatterns.length === 0) {
     throw new TypeError("Source-scope patterns must be a non-empty array.");
