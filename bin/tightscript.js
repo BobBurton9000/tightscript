@@ -233,7 +233,7 @@ async function main() {
           ...findInterfaceViolations(analysis),
           ...findTypeAnnotationViolations(analysis.sourceFiles),
           ...findTypeAliasAndUnionViolations(analysis.sourceFiles),
-          ...findSyntaxStyleViolations(analysis),
+          ...findSyntaxStyleViolations(analysis, compatibility),
           ...findCommentViolations(analysis),
           ...findRepeatedStringViolations(analysis),
         ];

@@ -17,6 +17,13 @@ function configureSourceScope(project) {
   );
 }
 
+function configurePagesSourceScope(project) {
+  project.writeFile(
+    "tightscript.config.json",
+    JSON.stringify({ include: ["pages/**/*.ts", "pages/**/*.tsx"] }),
+  );
+}
+
 function configureReactTypes(project) {
   project.writeFile(
     "tsconfig.json",
@@ -172,5 +179,110 @@ test("eligible compatibility does not suppress independent local export-list pol
     /\[REQ-020\] Local value "Component" must be exported inline/,
   );
   assert.doesNotMatch(result.stderr, /\[REQ-018\]/);
+  assert.match(result.stderr, /\nFAIL\n$/);
+});
+
+test("real CLI exempts exact local Pages Router data exports from REQ-031 [REQ-005, REQ-009]", (t) => {
+  const project = createTemporaryProject(t);
+  configurePagesSourceScope(project);
+  installNext(project, "16.2.0");
+  project.writeFile(
+    "pages/index.ts",
+    "export function getStaticProps() { return undefined; }\n" +
+      "export const getStaticPaths = () => undefined;\n" +
+      "export const getServerSideProps = function () { return undefined; };\n",
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "PASS\n");
+  assert.equal(result.stderr, "");
+});
+
+test("real CLI retains REQ-031 outside exact local Pages Router slots [REQ-005, REQ-009, REQ-010]", (t) => {
+  const project = createTemporaryProject(t);
+  configurePagesSourceScope(project);
+  installNext(project, "16.2.0");
+  project.writeFile(
+    "support/remote.ts",
+    "export function remoteData() { return undefined; }\n",
+  );
+  project.writeFile(
+    "pages/index.ts",
+    "export function getStaticProps() { return undefined; }\n" +
+      "function getMetadata() { return undefined; }\n" +
+      "const getLocal = () => undefined;\n" +
+      "class Store { getItem() { return undefined; } }\n",
+  );
+  project.writeFile(
+    "pages/alias.ts",
+    "const getPageData = () => undefined;\n" +
+      "export { getPageData as getStaticProps };\n",
+  );
+  project.writeFile(
+    "pages/imported.ts",
+    "import { remoteData } from \"../support/remote\";\n" +
+      "export const getStaticProps = remoteData;\n",
+  );
+  project.writeFile(
+    "pages/api/getStaticProps.ts",
+    "export function getStaticProps() { return undefined; }\n",
+  );
+  project.writeFile(
+    "pages/_app.ts",
+    "export function getStaticProps() { return undefined; }\n",
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  const namingDiagnostics = result.stderr
+    .split("\n")
+    .filter((line) => line.includes("[REQ-031]"));
+  assert.equal(namingDiagnostics.length, 7, result.stderr);
+  for (const [file, name] of [
+    ["pages/alias.ts", "getPageData"],
+    ["pages/imported.ts", "getStaticProps"],
+    ["pages/api/getStaticProps.ts", "getStaticProps"],
+    ["pages/_app.ts", "getStaticProps"],
+    ["pages/index.ts", "getMetadata"],
+    ["pages/index.ts", "getLocal"],
+    ["pages/index.ts", "getItem"],
+  ]) {
+    assert.ok(
+      namingDiagnostics.some(
+        (line) =>
+          line.startsWith(`${file}:`) && line.includes(`name "${name}"`),
+      ),
+      `missing REQ-031 for ${file} ${name}:\n${result.stderr}`,
+    );
+  }
+  assert.doesNotMatch(result.stderr, /pages\/index\.ts:1:\d+ \[REQ-031\]/);
+  assert.match(result.stderr, /\nFAIL\n$/);
+});
+
+test("real CLI keeps REQ-031 for Pages data exports on unsupported Next.js versions [REQ-005, REQ-009, REQ-010]", (t) => {
+  const project = createTemporaryProject(t);
+  configurePagesSourceScope(project);
+  installNext(project, "15.4.1");
+  project.writeFile(
+    "pages/index.ts",
+    "export function getStaticProps() { return undefined; }\n",
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.match(result.stderr, /pages\/index\.ts:1:\d+ \[REQ-031\]/);
+  assert.match(result.stderr, /\[REQ-018\] Exported value "getStaticProps"/);
   assert.match(result.stderr, /\nFAIL\n$/);
 });

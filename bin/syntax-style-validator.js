@@ -60,7 +60,15 @@ function hasCallSignature(node, checker) {
   }
 }
 
-function functionNameViolation(selectedFile, node, name) {
+function functionNameViolation(
+  selectedFile,
+  node,
+  name,
+  eligibleReq031Declarations,
+) {
+  if (eligibleReq031Declarations?.has(node) === true) {
+    return undefined;
+  }
   if (name === undefined || !name.startsWith("get")) {
     return undefined;
   }
@@ -171,7 +179,11 @@ function parameterLayoutViolation(selectedFile, node) {
   );
 }
 
-function syntaxStyleViolations(selectedFile, checker) {
+function syntaxStyleViolations(
+  selectedFile,
+  checker,
+  eligibleReq031Declarations,
+) {
   const { sourceFile } = selectedFile;
   const violations = [];
 
@@ -188,6 +200,7 @@ function syntaxStyleViolations(selectedFile, checker) {
         selectedFile,
         node,
         staticNameText(node.name),
+        eligibleReq031Declarations,
       );
       if (violation !== undefined) {
         violations.push(violation);
@@ -201,6 +214,7 @@ function syntaxStyleViolations(selectedFile, checker) {
         selectedFile,
         node,
         node.name.text,
+        eligibleReq031Declarations,
       );
       if (violation !== undefined) {
         violations.push(violation);
@@ -267,11 +281,19 @@ function syntaxStyleViolations(selectedFile, checker) {
 // @see [Tightscript: syntax analysis reports each `else` and `else if` branch.](./syntax-style.md#tightscript-req-032)
 // @see [Tightscript: syntax analysis enforces multiline layout for multi-parameter function-like nodes.](./syntax-style.md#tightscript-req-033)
 // @see [Tightscript: syntax-style findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
-export function findSyntaxStyleViolations(analysis) {
+export function findSyntaxStyleViolations(analysis, compatibility) {
   const violations = [];
+  const eligibleReq031Declarations =
+    compatibility?.eligibleReq031Declarations;
 
   for (const selectedFile of analysis.sourceFiles) {
-    violations.push(...syntaxStyleViolations(selectedFile, analysis.checker));
+    violations.push(
+      ...syntaxStyleViolations(
+        selectedFile,
+        analysis.checker,
+        eligibleReq031Declarations,
+      ),
+    );
   }
 
   return violations;
