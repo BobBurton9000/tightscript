@@ -1,10 +1,11 @@
 import assert from "node:assert/strict";
-import { symlinkSync } from "node:fs";
+import { existsSync, readFileSync, symlinkSync } from "node:fs";
 import test from "node:test";
 import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
 const PROPERTY_ID = "PROP-REQ-006-01";
+const FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID = "PROP-REQ-001-01";
 const UNSUPPORTED_SYMLINK_ERRORS = new Set([
   "EACCES",
   "ENOSYS",
@@ -51,6 +52,146 @@ function createDirectorySymlink(testContext, target, linkPath) {
     return false;
   }
 }
+
+function configureReactTypes(project) {
+  project.writeFile(
+    "tsconfig.json",
+    JSON.stringify({
+      compilerOptions: {
+        jsx: "react-jsx",
+        module: "CommonJS",
+        moduleResolution: "Node",
+        skipLibCheck: true,
+      },
+    }),
+  );
+  project.writeFile(
+    "node_modules/react/package.json",
+    JSON.stringify({ name: "react", version: "19.0.0", types: "index.d.ts" }),
+  );
+  project.writeFile(
+    "node_modules/react/index.d.ts",
+    `export namespace JSX {\n` +
+      `  export interface Element { readonly __element?: unique symbol; }\n` +
+      `  export interface IntrinsicElements { div: { id?: string }; }\n` +
+      `}\n` +
+      `export function createElement(...args: any[]): JSX.Element;\n`,
+  );
+  project.writeFile(
+    "node_modules/react/jsx-runtime.d.ts",
+    `export namespace JSX {\n` +
+      `  export interface Element { readonly __element?: unique symbol; }\n` +
+      `  export interface IntrinsicElements { div: { id?: string }; }\n` +
+      `}\n` +
+      `export function jsx(type: any, props: any, key?: any): JSX.Element;\n` +
+      `export function jsxs(type: any, props: any, key?: any): JSX.Element;\n` +
+      `export const Fragment: {};\n`,
+  );
+}
+
+function installNext(project, version = "16.2.0") {
+  project.writeFile(
+    "node_modules/next/package.json",
+    JSON.stringify({ name: "next", version, main: "index.js" }),
+  );
+  project.writeFile("node_modules/next/index.js", "module.exports = {};\n");
+}
+
+test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] React compatibility keeps policy roots within positive authored TypeScript includes`, (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project, project.cwd, ["src/**/*.ts", "src/**/*.tsx"]);
+  configureReactTypes(project);
+  project.writeFile(
+    "src/Component.tsx",
+    "export function Component() { return <div />; }\n" +
+      "let selectedTsx = 1;\n",
+  );
+  project.writeFile("src/selected.ts", "let selectedTypeScript = 1;\n");
+  project.writeFile("outside/OutOfPattern.ts", "let outOfPattern = 1;\n");
+  project.writeFile("generated/Generated.ts", "let generated = 1;\n");
+  project.writeFile(
+    "node_modules/third-party/index.ts",
+    "let dependency = 1;\n",
+  );
+  project.writeFile("src/legacy.js", "let legacyJavaScript = 1;\n");
+  project.writeFile("src/legacy.jsx", "let legacyJsx = 1;\n");
+
+  const result = runCli(project.cwd);
+
+  assertFailedCheck(result);
+  assert.deepEqual(diagnosticPaths(result), [
+    { filePath: "src/Component.tsx", requirementId: "REQ-009" },
+    { filePath: "src/selected.ts", requirementId: "REQ-009" },
+  ]);
+  assert.doesNotMatch(result.stderr, /Exported value "Component" must not be callable/u);
+  assert.doesNotMatch(result.stderr, /__tightscript_compatibility_probe__/u);
+  assert.equal(
+    existsSync(`${project.cwd}/__tightscript_compatibility_probe__.tsx`),
+    false,
+  );
+});
+
+test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] Next.js compatibility does not add convention, generated, dependency, or JavaScript paths as policy roots`, (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project, project.cwd, ["src/**/*.ts", "src/**/*.tsx"]);
+  installNext(project);
+  project.writeFile(
+    "src/ordinary.ts",
+    "let selectedTypeScript = 1;\n" +
+      "export function OrdinaryCallable() { return 1; }\n",
+  );
+  project.writeFile(
+    "app/page.tsx",
+    "let excludedRoute = 1;\n" +
+      "export default function Page() { return 42; }\n",
+  );
+  project.writeFile("generated/Generated.ts", "let generated = 1;\n");
+  project.writeFile(
+    "node_modules/third-party/index.ts",
+    "let dependency = 1;\n",
+  );
+  project.writeFile("src/legacy.js", "let legacyJavaScript = 1;\n");
+  project.writeFile("src/legacy.jsx", "let legacyJsx = 1;\n");
+
+  const result = runCli(project.cwd);
+
+  assertFailedCheck(result);
+  assert.deepEqual(diagnosticPaths(result), [
+    { filePath: "src/ordinary.ts", requirementId: "REQ-009" },
+    { filePath: "src/ordinary.ts", requirementId: "REQ-018" },
+  ]);
+  assert.doesNotMatch(result.stderr, /\bapp\/page\.tsx:/u);
+  assert.doesNotMatch(result.stderr, /__tightscript_compatibility_probe__/u);
+});
+
+test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] framework presence leaves init defaults and TypeScript-only selection unchanged`, (t) => {
+  const project = createTemporaryProject(t);
+  installNext(project);
+  project.writeFile("src/Scope.ts", "let selectedTypeScript = 1;\n");
+  project.writeFile("src/Scope.tsx", "let selectedTsx = 1;\n");
+  project.writeFile("src/legacy.js", "let legacyJavaScript = 1;\n");
+  project.writeFile("src/legacy.jsx", "let legacyJsx = 1;\n");
+
+  const initResult = runCli(project.cwd, ["init"]);
+
+  assert.ifError(initResult.error);
+  assert.equal(initResult.signal, null);
+  assert.equal(initResult.status, 0);
+  assert.equal(initResult.stderr, "");
+  assert.equal(initResult.stdout, "Created tightscript.config.json.\n");
+  assert.deepEqual(
+    JSON.parse(readFileSync(`${project.cwd}/tightscript.config.json`, "utf8")),
+    { include: ["**/*.ts", "**/*.tsx"] },
+  );
+
+  const result = runCli(project.cwd);
+
+  assertFailedCheck(result);
+  assert.deepEqual(diagnosticPaths(result), [
+    { filePath: "src/Scope.ts", requirementId: "REQ-009" },
+    { filePath: "src/Scope.tsx", requirementId: "REQ-009" },
+  ]);
+});
 
 test(`[${PROPERTY_ID}] include patterns are relative to each invocation CWD and inspect every matching .ts and .tsx file`, (t) => {
   const project = createTemporaryProject(t);
