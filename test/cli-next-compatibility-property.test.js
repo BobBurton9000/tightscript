@@ -341,3 +341,155 @@ test(`[${PROPERTY_ID}] default, unchanged, changed, and indeterminate routing co
     assert.equal(existsSync(`${project.cwd}/config-executed`), false);
   });
 });
+
+const PAGES_DATA_PROPERTY_ID = "PROP-REQ-009-01";
+
+function createPagesProject(testContext, nextVersion = "16.2.0") {
+  const project = createTemporaryProject(testContext);
+  configureSourceScope(project);
+  installNext(project, nextVersion);
+  return project;
+}
+
+function assertReq031Diagnostic(result, filePath, localName) {
+  const diagnostic = result.stderr.split("\n").find(
+    (line) =>
+      line.startsWith(`${filePath}:`) &&
+      line.includes("[REQ-031]") &&
+      line.includes(`name "${localName}"`),
+  );
+  assert.ok(
+    diagnostic,
+    `expected REQ-031 for ${localName} in ${filePath}:\n${result.stderr}`,
+  );
+}
+
+test(
+  `[${PAGES_DATA_PROPERTY_ID}] REQ-031 is exempt only for exact locally implemented Pages Router exports`,
+  async (t) => {
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] matching local page exports are exempt`,
+      (subtest) => {
+        const project = createPagesProject(subtest);
+        project.writeFile(
+          "pages/index.ts",
+          "export function getStaticProps() { return undefined; }\n" +
+            "export const getStaticPaths = () => undefined;\n" +
+            "export const getServerSideProps = function () { return undefined; };\n",
+        );
+
+        assertPassedCli(runCli(project.cwd));
+      },
+    );
+
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] a differently named local export alias retains REQ-031`,
+      (subtest) => {
+        const project = createPagesProject(subtest);
+        project.writeFile(
+          "pages/alias.ts",
+          "const getPageData = () => undefined;\n" +
+            "export { getPageData as getStaticProps };\n",
+        );
+
+        const result = runCli(project.cwd);
+
+        assertFailedCli(result);
+        assertReq031Diagnostic(result, "pages/alias.ts", "getPageData");
+      },
+    );
+
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] a same-named local binding to an imported callable retains REQ-031`,
+      (subtest) => {
+        const project = createPagesProject(subtest);
+        project.writeFile(
+          "support/remote.ts",
+          "export function remoteData() { return undefined; }\n",
+        );
+        project.writeFile(
+          "pages/imported.ts",
+          'import { remoteData } from "../support/remote";\n' +
+            "export const getStaticProps = remoteData;\n",
+        );
+
+        const result = runCli(project.cwd);
+
+        assertFailedCli(result);
+        assertReq031Diagnostic(result, "pages/imported.ts", "getStaticProps");
+      },
+    );
+
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] API and special modules retain REQ-031`,
+      (subtest) => {
+        const project = createPagesProject(subtest);
+        project.writeFile(
+          "pages/api/getStaticProps.ts",
+          "export function getStaticProps() { return undefined; }\n",
+        );
+        project.writeFile(
+          "pages/_app.ts",
+          "export function getStaticProps() { return undefined; }\n",
+        );
+
+        const result = runCli(project.cwd);
+
+        assertFailedCli(result);
+        assertReq031Diagnostic(
+          result,
+          "pages/api/getStaticProps.ts",
+          "getStaticProps",
+        );
+        assertReq031Diagnostic(result, "pages/_app.ts", "getStaticProps");
+      },
+    );
+
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] unsupported Next.js majors retain REQ-031`,
+      (subtest) => {
+        const project = createPagesProject(subtest, "15.4.1");
+        project.writeFile(
+          "pages/index.ts",
+          "export function getStaticProps() { return undefined; }\n",
+        );
+
+        const result = runCli(project.cwd);
+
+        assertFailedCli(result);
+        assertReq031Diagnostic(result, "pages/index.ts", "getStaticProps");
+      },
+    );
+
+    await t.test(
+      `[${PAGES_DATA_PROPERTY_ID}] other lowercase get functions and methods retain REQ-031`,
+      (subtest) => {
+        const project = createPagesProject(subtest);
+        project.writeFile(
+          "pages/index.ts",
+          "export function getStaticProps() { return undefined; }\n" +
+            "function getMetadata() { return undefined; }\n" +
+            "class Store { getItem() { return undefined; } }\n",
+        );
+
+        const result = runCli(project.cwd);
+
+        assertFailedCli(result);
+        assertReq031Diagnostic(result, "pages/index.ts", "getMetadata");
+        assertReq031Diagnostic(result, "pages/index.ts", "getItem");
+        assert.equal(
+          result.stderr
+            .split("\n")
+            .some(
+              (line) =>
+                line.startsWith("pages/index.ts:") &&
+                line.includes("[REQ-031]") &&
+                line.includes('name "getStaticProps"'),
+            ),
+          false,
+          result.stderr,
+        );
+      },
+    );
+  },
+);
