@@ -1,0 +1,8 @@
+# 2026-11-18 — Compatibility analyser foundation
+
+- Type: Feature implementation
+- Scope: React/Next.js compatibility analysis for `TASK-003`.
+- Context and evidence: The approved task requires checker-based callable export decisions, same-file implementation provenance, conservative wrapper tracing, React JSX checks, and fail-closed handling of incomplete semantics. At the start of this invocation, `bin/framework-context.js` and `test/framework-context.test.js` had pre-existing modifications, and two Task-002 Development Log files were untracked; those paths were preserved.
+- Decision or change: Added `bin/compatibility-analyser.js` with callable export analysis, local provenance tracing, reviewed React wrapper handling, in-memory JSX probing, and Next.js role-based decisions. Added temporary-project tests in `test/compatibility-analyser.test.js` for direct and aliased implementations, wrappers, rejected provenance, JSX modes, Next.js context, and incomplete semantic analysis.
+- Observed result: `node --check bin/compatibility-analyser.js` and `node --check test/compatibility-analyser.test.js` passed. `node --test test/compatibility-analyser.test.js` could not execute its tests because the repository's TypeScript peer dependency is not installed; Node reported `ERR_MODULE_NOT_FOUND: Cannot find package 'typescript'`. The task remains unverified and its checkbox was not changed. No commit was created.
+- Follow-up: Run the focused test after the TypeScript peer dependency is available, address any resulting defects, then complete and verify `TASK-003` before recording it complete.
