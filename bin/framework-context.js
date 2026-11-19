@@ -448,6 +448,13 @@ function staticStringArray(expression, sourceFile, resolving = new Set()) {
   return values;
 }
 
+// @see [next-routing-config-resolution: the classifier defaults omitted `pageExtensions` without evaluating unrelated config values.](./framework-compatibility.md#next-routing-config-resolution-req-001)
+// @see [next-routing-config-resolution: the classifier recognizes the exact default `pageExtensions` sequence.](./framework-compatibility.md#next-routing-config-resolution-req-002)
+// @see [next-routing-config-resolution: the classifier marks other static `pageExtensions` values as changed.](./framework-compatibility.md#next-routing-config-resolution-req-003)
+// @see [next-routing-config-resolution: the classifier marks unknown config shapes and dynamic routing values as indeterminate.](./framework-compatibility.md#next-routing-config-resolution-req-004)
+// @see [next-routing-config-resolution: the classifier parses project configuration without executing it.](./framework-compatibility.md#next-routing-config-resolution-req-006)
+// @see [next-routing-config-resolution: the classifier derives routing status only from config shape and `pageExtensions` evidence.](./framework-compatibility.md#next-routing-config-resolution-prop-req-001-01)
+// @see [next-routing-config-resolution: the classifier inspects configuration syntax without running project side effects.](./framework-compatibility.md#next-routing-config-resolution-prop-req-006-01)
 function classifyConfigSource(contents, configPath) {
   const extension = configPath.slice(configPath.lastIndexOf("."));
   const scriptKind = [".ts", ".mts", ".cts"].includes(extension)
@@ -727,6 +734,8 @@ function classifyNextRouterModule(modulePath, roots, moduleName) {
 // @see [react-next-compatibility: the classifier grants roles only from the closed supported Next.js convention table.](./framework-compatibility.md#react-next-compatibility-req-005)
 // @see [react-next-compatibility: unrecognized or unsupported file roles receive no Next.js exception.](./framework-compatibility.md#react-next-compatibility-req-006)
 // @see [react-next-compatibility: the classifier supplies only supported route roles to positive-proof decisions.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
+// @see [next-routing-config-resolution: the classifier returns only roles and exports in the existing closed convention table.](./framework-compatibility.md#react-next-compatibility-req-005)
+// @see [next-routing-config-resolution: the classifier contributes only table-approved roles to compatibility decisions.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
 export function classifyNextModule(
   filePath,
   cwd = process.cwd(),

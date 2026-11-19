@@ -1246,6 +1246,8 @@ function bindingName(declaration) {
 // @see [react-next-compatibility: the analyser requires positive proof before granting a callable-export exception.](./framework-compatibility.md#react-next-compatibility-prop-req-004-01)
 // @see [react-next-compatibility: the analyser identifies only exact local Pages Router bindings for REQ-031.](./framework-compatibility.md#react-next-compatibility-prop-req-009-01)
 // @see [react-next-compatibility: the analyser leaves unselected files and semantic probes outside policy roots.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
+// @see [next-routing-config-resolution: compatibility decisions consume selected roots without adding paths.](./framework-compatibility.md#react-next-compatibility-req-002)
+// @see [next-routing-config-resolution: framework analysis leaves the selected source-set boundary unchanged.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
 export function analyzeFrameworkCompatibility(analysis, options = {}) {
   const cwd = resolve(options.cwd ?? process.cwd());
   let frameworkContext = options.frameworkContext;

@@ -13,12 +13,14 @@ WHEN Tightscript evaluates a project under this compatibility contract, THE SYST
 ## REACT-NEXT-COMPATIBILITY-REQ-002
 
 - **Title:** Existing positive include patterns remain the source-selection authority
+- **Additional source:** `next-routing-config-resolution: REQ-007`
 
 WHEN a React or Next.js project uses Tightscript, THE SYSTEM SHALL use the existing positive `include` patterns as the sole source-selection authority. The compatibility behavior MUST NOT add files to the selected source set. The project's include patterns MUST select authored source and MUST NOT select dependency or generated-output directories.
 
 ## REACT-NEXT-COMPATIBILITY-REQ-003
 
 - **Title:** Framework compatibility preserves every unrelated Tightscript policy
+- **Additional source:** `next-routing-config-resolution: REQ-008`
 
 THE SYSTEM SHALL continue to enforce every existing Tightscript policy except the specific REQ-018 and REQ-031 exceptions defined on this page. In particular, the system MUST continue to enforce Tightscript REQ-024, REQ-029, and REQ-030 without React- or Next-specific exceptions.
 
@@ -36,6 +38,7 @@ The implementation MAY be wrapped by one or more expressions only when a local c
 ## REACT-NEXT-COMPATIBILITY-REQ-005
 
 - **Title:** Next.js callable exports require an entry in the closed convention table
+- **Additional source:** `next-routing-config-resolution: REQ-005`
 
 WHEN a selected module is a recognized Next.js file-convention module, THE SYSTEM SHALL exempt a callable export from Tightscript REQ-018 only when all of the following conditions hold:
 
@@ -104,18 +107,49 @@ WHEN a React or supported Next.js callable export does not meet every condition 
 
 WHEN required TypeScript, React, or Next.js semantic information cannot be resolved to determine whether a compatibility exception applies, THE SYSTEM SHALL fail closed and MUST NOT exempt the callable export.
 
+## NEXT-ROUTING-CONFIG-RESOLUTION-REQ-001
+
+- **Title:** Omitted `pageExtensions` ignores unrelated dynamic values
+
+WHEN Tightscript identifies the shape of a Next.js config object and that object omits `pageExtensions`, THE SYSTEM SHALL classify the routing configuration as default even if values of other statically named properties, such as `distDir`, are dynamic or otherwise not statically evaluable.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-REQ-002
+
+- **Title:** Recognize statically configured default extensions
+
+WHEN Tightscript identifies the shape of a Next.js config object and statically determines that `pageExtensions` is exactly `["tsx", "ts", "jsx", "js"]`, THE SYSTEM SHALL classify the routing configuration as default.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-REQ-003
+
+- **Title:** Changed extensions do not grant default conventions
+
+WHEN Tightscript statically determines that `pageExtensions` differs from `["tsx", "ts", "jsx", "js"]`, THE SYSTEM SHALL classify the routing configuration as changed and SHALL NOT grant default file-convention exceptions on that basis.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-REQ-004
+
+- **Title:** Indeterminate routing configuration fails closed
+
+IF Tightscript cannot determine the config object's shape, whether `pageExtensions` is present, or the static value of `pageExtensions`—including when its value is dynamic or computed, or an unanalysable spread could provide it—THEN THE SYSTEM SHALL classify the routing configuration as indeterminate and SHALL NOT grant default file-convention exceptions.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-REQ-006
+
+- **Title:** Project configuration is not executed
+
+THE SYSTEM SHALL NOT execute a project's Next.js configuration code to determine its routing configuration.
+
 ## Correctness properties
 
 ## REACT-NEXT-COMPATIBILITY-PROP-REQ-004-01
 
-- **Sources:** `REQ-004`, `REQ-005`, `REQ-006`, `REQ-011`, `REQ-012`
-- **Living requirements:** [react-next-compatibility: React component exports require checker acceptance and a local implementation](#react-next-compatibility-req-004); [react-next-compatibility: Next.js callable exports require an entry in the closed convention table](#react-next-compatibility-req-005); [react-next-compatibility: unresolved or unsupported Next.js context grants no exception](#react-next-compatibility-req-006); [react-next-compatibility: ineligible framework exports remain subject to existing policy](#react-next-compatibility-req-011); [react-next-compatibility: missing semantic information fails closed](#react-next-compatibility-req-012)
+- **Sources:** `react-next-compatibility: REQ-004`, `react-next-compatibility: REQ-005`, `react-next-compatibility: REQ-006`, `react-next-compatibility: REQ-011`, `react-next-compatibility: REQ-012`, `next-routing-config-resolution: REQ-005`
+- **Additional property source:** `next-routing-config-resolution: PROP-REQ-005-01`
+- **Living requirements:** [react-next-compatibility: React component exports require checker acceptance and a local implementation](#react-next-compatibility-req-004); [react-next-compatibility and next-routing-config-resolution: Next.js callable exports require an entry in the closed convention table](#react-next-compatibility-req-005); [react-next-compatibility: unresolved or unsupported Next.js context grants no exception](#react-next-compatibility-req-006); [react-next-compatibility: ineligible framework exports remain subject to existing policy](#react-next-compatibility-req-011); [react-next-compatibility: missing semantic information fails closed](#react-next-compatibility-req-012)
 - **Title:** Framework REQ-018 exemptions require positive proof
 - **Preconditions:** A selected `.ts` or `.tsx` module has a callable export subject to REQ-018.
 - **Input or state space:** React-only versus resolved Next.js project context; configured JSX semantics and resolved React types; direct or wrapped export values and their local or imported implementation provenance; for Next.js, resolved major version, router, file role, export name, and routing-relevant configuration; availability of required semantic information.
 - **Invariant:** A callable export is exempt from REQ-018 only when it meets every applicable React or Next.js condition and a local callable implementation in the same source file is proven to contribute to the final exported value. An imported callable MUST NOT be a possible final exported implementation on any path. React eligibility requires the TypeScript checker to accept the final value as a JSX component type and does not apply in a Next.js project context. Next.js eligibility requires a supported compatibility-table entry, recognized convention role, local implementation, and checker-established callability. Project-specific configuration that changes whether the module is recognized as a listed role, or whose effect on that recognition is indeterminate, MUST NOT yield the exception. Slot-specific Next.js signatures or other framework-contract details MUST NOT be conditions for this exception. A known-ineligible export remains subject to REQ-018. If required semantic information is incomplete, the system fails closed and MUST NOT report PASS.
 - **Boundaries:** Imported callables that may be final exported implementations, imported aliases, and re-exports; wrappers with an imported possible final value even when another branch is local; unrelated callback, property, or alternative-branch occurrences; rejected JSX component types; checker-callable Next.js exports with incompatible slot-specific signatures; unsupported Next.js versions, roles, or export names; root-versus-`src/` routing; Pages API and special routes; default, changed, and indeterminate routing configuration; unresolved required semantic information.
-- **Test evidence:** `test/cli-framework-compatibility-property.test.js` — `[PROP-REQ-004-01] configured JSX modes accept components and reject non-components`, `[PROP-REQ-004-01] missing or unresolved React types fail closed`, `[PROP-REQ-004-01] direct and reviewed wrapped same-file implementations are eligible`, `[PROP-REQ-004-01] imports, aliases, re-exports, unrelated occurrences, unknown wrappers, and imported final branches retain REQ-018`, and `[PROP-REQ-004-01] a resolved Next.js project does not use React-only component eligibility`; `test/cli-next-compatibility-property.test.js` — `[PROP-REQ-004-01] Next.js 16.x accepts every listed router, file-role, and callable-export combination`, `[PROP-REQ-004-01] project-level proxy exports qualify for App Router, Pages Router, or both`, `[PROP-REQ-004-01] supported src layouts work and active project-root routers take precedence`, `[PROP-REQ-004-01] unsupported roles, names, and file boundaries retain REQ-018`, `[PROP-REQ-004-01] unsupported Next.js majors and unresolved package versions never pass`, and `[PROP-REQ-004-01] default, unchanged, changed, and indeterminate routing configuration is fail-closed`.
+- **Test evidence:** `test/cli-framework-compatibility-property.test.js` — `[PROP-REQ-004-01] configured JSX modes accept components and reject non-components`, `[PROP-REQ-004-01] missing or unresolved React types fail closed`, `[PROP-REQ-004-01] direct and reviewed wrapped same-file implementations are eligible`, `[PROP-REQ-004-01] imports, aliases, re-exports, unrelated occurrences, unknown wrappers, and imported final branches retain REQ-018`, and `[PROP-REQ-004-01] a resolved Next.js project does not use React-only component eligibility`; `test/cli-next-compatibility-property.test.js` — `[PROP-REQ-004-01] Next.js 16.x accepts every listed router, file-role, and callable-export combination`, `[PROP-REQ-004-01] project-level proxy exports qualify for App Router, Pages Router, or both`, `[PROP-REQ-004-01] supported src layouts work and active project-root routers take precedence`, `[PROP-REQ-004-01] unsupported roles, names, and file boundaries retain REQ-018`, `[PROP-REQ-004-01] unsupported Next.js majors and unresolved package versions never pass`, and `[PROP-REQ-004-01] default, unchanged, changed, and indeterminate routing configuration is fail-closed`; `test/cli-next-compatibility-property.test.js` — `[PROP-REQ-001-01] [PROP-REQ-005-01] omitted pageExtensions ignores unrelated dynamic values without widening the convention boundary`.
 
 ## REACT-NEXT-COMPATIBILITY-PROP-REQ-009-01
 
@@ -130,22 +164,46 @@ WHEN required TypeScript, React, or Next.js semantic information cannot be resol
 
 ## REACT-NEXT-COMPATIBILITY-PROP-REQ-007-01
 
-- **Sources:** `REQ-003`, `REQ-007`, `REQ-008`, `REQ-009`, `REQ-010`
-- **Living requirements:** [react-next-compatibility: framework compatibility preserves every unrelated Tightscript policy](#react-next-compatibility-req-003); [react-next-compatibility: compatibility exemptions do not bypass imported-value or export-list policies](#react-next-compatibility-req-007); [react-next-compatibility: imported-value passthroughs remain prohibited in framework modules](#react-next-compatibility-req-008); [react-next-compatibility: the `get`-prefix exception is limited to exact Pages Router export bindings](#react-next-compatibility-req-009); [react-next-compatibility: other lowercase `get` names remain prohibited](#react-next-compatibility-req-010)
+- **Sources:** `react-next-compatibility: REQ-003`, `react-next-compatibility: REQ-007`, `react-next-compatibility: REQ-008`, `react-next-compatibility: REQ-009`, `react-next-compatibility: REQ-010`, `next-routing-config-resolution: REQ-008`
+- **Additional property source:** `next-routing-config-resolution: PROP-REQ-008-01`
+- **Living requirements:** [react-next-compatibility and next-routing-config-resolution: framework compatibility preserves every unrelated Tightscript policy](#react-next-compatibility-req-003); [react-next-compatibility: compatibility exemptions do not bypass imported-value or export-list policies](#react-next-compatibility-req-007); [react-next-compatibility: imported-value passthroughs remain prohibited in framework modules](#react-next-compatibility-req-008); [react-next-compatibility: the `get`-prefix exception is limited to exact Pages Router export bindings](#react-next-compatibility-req-009); [react-next-compatibility: other lowercase `get` names remain prohibited](#react-next-compatibility-req-010)
 - **Title:** Compatibility exemptions do not bypass other policies
 - **Preconditions:** A selected module contains an export eligible for the REQ-018 exception or a local declaration eligible for the exact REQ-031 exception.
 - **Input or state space:** An otherwise eligible framework export or declaration in a module that also contains violations of independently applicable Tightscript policies.
 - **Invariant:** A compatibility exception suppresses only the finding permitted by its applicable requirement: REQ-018 for an eligible framework export, or REQ-031 for the exact local Pages Router declaration. Every other applicable policy continues to be evaluated and reported, including REQ-019 and REQ-020 and the preserved REQ-024, REQ-029, and REQ-030 constraints.
 - **Boundaries:** Imported-value passthroughs and source re-exports; local export lists and exported object values; violations of the explicitly preserved interface and type policies; lowercase `get` function or method names outside exact eligible Pages Router slots.
-- **Test evidence:** `test/cli-framework-policy-independence-property.test.js` — `[PROP-REQ-007-01] an eligible App Router export does not suppress independent export and import policies` and `[PROP-REQ-007-01] an exact Pages Router exception leaves other lowercase get names enforced`.
+- **Test evidence:** `test/cli-framework-policy-independence-property.test.js` — `[PROP-REQ-007-01] an eligible App Router export does not suppress independent export and import policies`, `[PROP-REQ-007-01] an exact Pages Router exception leaves other lowercase get names enforced`, and `[PROP-REQ-008-01] an eligible Next.js convention export does not suppress independent import, export, type, and style policies`.
 
 ## REACT-NEXT-COMPATIBILITY-PROP-REQ-001-01
 
-- **Sources:** `REQ-001`, `REQ-002`
-- **Living requirements:** [react-next-compatibility: compatibility applies only to selected TypeScript and TSX files](#react-next-compatibility-req-001); [react-next-compatibility: existing positive include patterns remain the source-selection authority](#react-next-compatibility-req-002)
+- **Sources:** `react-next-compatibility: REQ-001`, `react-next-compatibility: REQ-002`, `next-routing-config-resolution: REQ-007`
+- **Additional property source:** `next-routing-config-resolution: PROP-REQ-007-01`
+- **Living requirements:** [react-next-compatibility: compatibility applies only to selected TypeScript and TSX files](#react-next-compatibility-req-001); [react-next-compatibility and next-routing-config-resolution: existing positive include patterns remain the source-selection authority](#react-next-compatibility-req-002)
 - **Title:** Compatibility does not expand the selected source set
 - **Preconditions:** The consuming project uses positive `include` patterns to select authored `.ts` and `.tsx` source files and excludes dependency and generated-output directories.
 - **Input or state space:** Matching and non-matching paths, including `.js`, `.jsx`, and TypeScript files outside the configured patterns.
 - **Invariant:** Compatibility analysis operates only on `.ts` and `.tsx` roots already selected by the existing positive `include` patterns. It does not add framework files or virtual semantic probes to the policy source set.
 - **Boundaries:** Unselected TypeScript files, JavaScript and JSX files, and synthetic semantic probes.
-- **Test evidence:** `test/cli-source-scope-property.test.js` — `[PROP-REQ-001-01] React compatibility keeps policy roots within positive authored TypeScript includes`, `[PROP-REQ-001-01] Next.js compatibility does not add convention, generated, dependency, or JavaScript paths as policy roots`, and `[PROP-REQ-001-01] framework presence leaves init defaults and TypeScript-only selection unchanged`.
+- **Test evidence:** `test/cli-source-scope-property.test.js` — `[PROP-REQ-001-01] React compatibility keeps policy roots within positive authored TypeScript includes`, `[PROP-REQ-001-01] Next.js compatibility does not add convention, generated, dependency, or JavaScript paths as policy roots`, `[PROP-REQ-001-01] framework presence leaves init defaults and TypeScript-only selection unchanged`, and `[PROP-REQ-007-01] Next.js routing analysis does not add convention, generated, dependency, or JavaScript paths as policy roots`.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-PROP-REQ-001-01
+
+- **Sources:** `REQ-001`, `REQ-002`, `REQ-003`, `REQ-004`
+- **Living requirements:** [next-routing-config-resolution: omitted `pageExtensions` ignores unrelated dynamic values](#next-routing-config-resolution-req-001); [next-routing-config-resolution: recognize statically configured default extensions](#next-routing-config-resolution-req-002); [next-routing-config-resolution: changed extensions do not grant default conventions](#next-routing-config-resolution-req-003); [next-routing-config-resolution: indeterminate routing configuration fails closed](#next-routing-config-resolution-req-004)
+- **Title:** Classify routing only from routing-relevant configuration
+- **Preconditions:** Tightscript attempts static routing classification of a discovered Next.js config source; the exported config shape and `pageExtensions` presence or value may be known or indeterminate.
+- **Input or state space:** Supported inline or aliased config objects with `pageExtensions` omitted, set to the exact default sequence, set to another statically represented value, or not statically determinable; unsupported or ambiguous config shapes; unrelated statically named properties may have dynamic values.
+- **Invariant:** A known config shape with no `pageExtensions` is classified as default regardless of dynamic values on unrelated named properties. A statically determined `pageExtensions` value is classified as default only when it is exactly `["tsx", "ts", "jsx", "js"]`; every other statically represented value is changed. An unknown config shape or routing value is indeterminate. Changed or indeterminate routing MUST NOT grant default file-convention exceptions.
+- **Boundaries:** Inline and aliased config objects; exact sequence and order; shorthand `pageExtensions`; dynamic `pageExtensions`; computed keys, spreads, duplicate or accessor entries, `__proto__` setters that could provide an inherited `pageExtensions`, and other ambiguous object shapes.
+- **Test evidence:** `test/framework-context.test.js` — `routing status tracks only statically relevant config shape [PROP-REQ-001-01]`; `test/cli-next-compatibility-property.test.js` — `[PROP-REQ-001-01] omitted pageExtensions ignores unrelated dynamic values without widening the convention boundary`, `[PROP-REQ-001-01] explicit and shorthand default pageExtensions qualify through the real CLI`, `[PROP-REQ-001-01] statically changed pageExtensions retain ordinary policy findings`, and `[PROP-REQ-001-01] indeterminate routing shapes grant no convention exception`.
+
+## NEXT-ROUTING-CONFIG-RESOLUTION-PROP-REQ-006-01
+
+- **Sources:** `REQ-006`
+- **Living requirements:** [next-routing-config-resolution: project configuration is not executed](#next-routing-config-resolution-req-006)
+- **Title:** Never execute project configuration
+- **Preconditions:** Tightscript discovers a supported Next.js config file.
+- **Input or state space:** Config source containing side effects in dynamic routing values or other config code.
+- **Invariant:** Routing resolution inspects configuration syntax without executing project configuration code; side-effect markers remain absent after resolution.
+- **Boundaries:** Side effects in dynamic expressions and config-level statements versus static configuration values.
+- **Test evidence:** `test/framework-context.test.js` — `dynamic routing configuration is indeterminate and is never executed [REQ-005, REQ-006, REQ-012, PROP-REQ-006-01]`; `test/cli-next-compatibility-property.test.js` — `[PROP-REQ-001-01] [PROP-REQ-006-01] dynamic configuration fails closed without execution`.

@@ -125,6 +125,8 @@ async function initializeConfiguration() {
 // @see [react-next-compatibility: the CLI evaluates export-list and imported-value policies independently of framework eligibility.](./framework-compatibility.md#react-next-compatibility-req-007)
 // @see [react-next-compatibility: incomplete framework semantics become evaluation errors rather than exemptions.](./framework-compatibility.md#react-next-compatibility-req-012)
 // @see [react-next-compatibility: the CLI keeps independent policy findings when a narrow exception applies.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
+// @see [next-routing-config-resolution: the CLI runs ordinary validators after framework eligibility analysis.](./framework-compatibility.md#react-next-compatibility-req-003)
+// @see [next-routing-config-resolution: the CLI retains independent findings alongside framework exceptions.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 async function main() {
   if (process.argv[2] === "init") {
     await initializeConfiguration();
