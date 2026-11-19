@@ -137,6 +137,111 @@ test("routing configuration marks custom pageExtensions as changed [REQ-005, REQ
   assert.deepEqual(context.routingConfiguration, { status: "changed" });
 });
 
+test("routing status tracks only statically relevant config shape [PROP-REQ-001-01]", async (t) => {
+  const cases = [
+    {
+      name: "inline config ignores a dynamic unrelated property",
+      source: 'module.exports = { distDir: process.env.DIST_DIR };\n',
+      status: "default",
+    },
+    {
+      name: "const-aliased config ignores a dynamic unrelated property",
+      source:
+        'const dynamicDistDir = process.env.DIST_DIR;\n' +
+        'const config = { distDir: dynamicDistDir };\n' +
+        'module.exports = config;\n',
+      status: "default",
+    },
+    {
+      name: "explicit pageExtensions resolves a const alias to the default sequence",
+      source:
+        'const tsx = "tsx";\n' +
+        'const defaultExtensions = [tsx, "ts", "jsx", "js"];\n' +
+        'module.exports = { pageExtensions: defaultExtensions };\n',
+      status: "default",
+    },
+    {
+      name: "shorthand pageExtensions resolves its const alias to the default sequence",
+      source:
+        'const pageExtensions = ["tsx", "ts", "jsx", "js"];\n' +
+        'module.exports = { pageExtensions };\n',
+      status: "default",
+    },
+    {
+      name: "a different static string array is changed",
+      source:
+        'module.exports = { pageExtensions: ["ts", "tsx", "jsx", "js"] };\n',
+      status: "changed",
+    },
+    {
+      name: "a static non-array value is changed",
+      source: 'module.exports = { pageExtensions: "tsx" };\n',
+      status: "changed",
+    },
+    {
+      name: "a static array containing a non-string value is changed",
+      source:
+        'module.exports = { pageExtensions: ["tsx", 1] };\n',
+      status: "changed",
+    },
+    {
+      name: "a dynamic pageExtensions value is indeterminate",
+      source: 'module.exports = { pageExtensions: process.env.PAGE_EXTENSIONS };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "an unresolved shorthand pageExtensions value is indeterminate",
+      source: 'module.exports = { pageExtensions };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "a computed config key is indeterminate",
+      source:
+        'module.exports = { [process.env.CONFIG_KEY]: ["tsx", "ts", "jsx", "js"] };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "an unanalysable spread is indeterminate",
+      source: 'module.exports = { ...loadConfig() };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "duplicate pageExtensions entries are indeterminate",
+      source:
+        'module.exports = { pageExtensions: ["tsx", "ts", "jsx", "js"], pageExtensions: ["ts"] };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "a pageExtensions accessor is indeterminate",
+      source:
+        'module.exports = { get pageExtensions() { return ["tsx", "ts", "jsx", "js"]; } };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "a prototype-changing __proto__ setter is indeterminate",
+      source:
+        'module.exports = { __proto__: { pageExtensions: ["tsx", "ts", "jsx", "js"] } };\n',
+      status: "indeterminate",
+    },
+    {
+      name: "an unsupported config expression is indeterminate",
+      source: "module.exports = createConfig();\n",
+      status: "indeterminate",
+    },
+  ];
+
+  for (const scenario of cases) {
+    await t.test(`[PROP-REQ-001-01] ${scenario.name}`, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      project.writeFile("next.config.js", scenario.source);
+
+      assert.deepEqual(resolveFrameworkContext(project.cwd).routingConfiguration, {
+        status: scenario.status,
+      });
+    });
+  }
+});
+
 test("dynamic routing configuration is indeterminate and is never executed [REQ-005, REQ-006, REQ-012]", (t) => {
   const project = createTemporaryProject(t);
   const markerPath = resolve(project.cwd, "configuration-executed");

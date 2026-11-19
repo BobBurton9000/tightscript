@@ -361,14 +361,10 @@ function configExpressionFrom(sourceFile) {
       return undefined;
     }
     if (ts.isVariableStatement(statement)) {
-      if ((statement.declarationList.flags & ts.NodeFlags.Const) === 0) {
-        return undefined;
-      }
       if (
+        (statement.declarationList.flags & ts.NodeFlags.Const) === 0 ||
         statement.declarationList.declarations.some(
-          (declaration) =>
-            declaration.initializer === undefined ||
-            !staticallyRepresentable(declaration.initializer, sourceFile),
+          (declaration) => declaration.initializer === undefined,
         )
       ) {
         return undefined;
@@ -402,8 +398,26 @@ function objectExpressionFrom(expression, sourceFile, resolving = new Set()) {
   return objectExpressionFrom(initializer, sourceFile, nextResolving);
 }
 
+function staticStringValue(expression, sourceFile, resolving = new Set()) {
+  const current = unwrapExpression(expression);
+  if (ts.isStringLiteralLike(current)) {
+    return current.text;
+  }
+  if (!ts.isIdentifier(current) || resolving.has(current.text)) {
+    return undefined;
+  }
+
+  const initializer = constInitializerFor(sourceFile, current.text);
+  if (initializer === undefined) {
+    return undefined;
+  }
+  const nextResolving = new Set(resolving);
+  nextResolving.add(current.text);
+  return staticStringValue(initializer, sourceFile, nextResolving);
+}
+
 function staticStringArray(expression, sourceFile, resolving = new Set()) {
-  let current = unwrapExpression(expression);
+  const current = unwrapExpression(expression);
   if (ts.isIdentifier(current)) {
     if (resolving.has(current.text)) {
       return undefined;
@@ -425,11 +439,11 @@ function staticStringArray(expression, sourceFile, resolving = new Set()) {
     if (ts.isSpreadElement(element)) {
       return undefined;
     }
-    const value = unwrapExpression(element);
-    if (!ts.isStringLiteralLike(value)) {
+    const value = staticStringValue(element, sourceFile, resolving);
+    if (value === undefined) {
       return undefined;
     }
-    values.push(value.text);
+    values.push(value);
   }
   return values;
 }
@@ -466,18 +480,18 @@ function classifyConfigSource(contents, configPath) {
     }
     if (ts.isPropertyAssignment(property)) {
       const name = staticPropertyName(property.name);
-      if (name === undefined) {
+      if (name === undefined || name === "__proto__") {
         return { status: "indeterminate" };
       }
       if (name === "pageExtensions") {
-        pageExtensionsProperties.push(property);
+        pageExtensionsProperties.push(property.initializer);
       }
       continue;
     }
 
     if (ts.isShorthandPropertyAssignment(property)) {
       if (property.name.text === "pageExtensions") {
-        return { status: "indeterminate" };
+        pageExtensionsProperties.push(property.name);
       }
       continue;
     }
@@ -498,16 +512,18 @@ function classifyConfigSource(contents, configPath) {
     return { status: "indeterminate" };
   }
 
-  const pageExtensions = staticStringArray(
-    pageExtensionsProperties[0].initializer,
-    sourceFile,
-  );
-  if (pageExtensions === undefined) {
+  const pageExtensionsExpression = pageExtensionsProperties[0];
+  if (!staticallyRepresentable(pageExtensionsExpression, sourceFile)) {
     return { status: "indeterminate" };
   }
 
+  const pageExtensions = staticStringArray(
+    pageExtensionsExpression,
+    sourceFile,
+  );
   return {
     status:
+      pageExtensions !== undefined &&
       pageExtensions.length === DEFAULT_PAGE_EXTENSIONS.length &&
       pageExtensions.every(
         (extensionName, index) =>
