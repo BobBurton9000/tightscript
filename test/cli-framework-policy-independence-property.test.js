@@ -4,6 +4,7 @@ import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
 const PROPERTY_ID = "PROP-REQ-007-01";
+const POLICY_INDEPENDENCE_PROPERTY_ID = "PROP-REQ-008-01";
 
 function configureProject(project) {
   project.writeFile("package.json", JSON.stringify({ type: "module" }));
@@ -116,6 +117,38 @@ test(`[${PROPERTY_ID}] an eligible App Router export does not suppress independe
   assertFinding(result, "REQ-029", "app/policy.ts", "Type alias declarations are not permitted");
   assertFinding(result, "REQ-030", "app/policy.ts", "Union type syntax is not permitted");
 });
+
+test(
+  `[${POLICY_INDEPENDENCE_PROPERTY_ID}] an eligible Next.js convention export does not suppress independent import, export, type, and style policies`,
+  (t) => {
+    const project = createTemporaryProject(t);
+    configureProject(project);
+    project.writeFile("support/values.ts", "export const unchangedValue = 1;\n");
+    project.writeFile(
+      "app/page.ts",
+      'import { unchangedValue } from "../support/values.js";\n' +
+        "export default function Page() { return null; }\n" +
+        "export const directPassthrough = unchangedValue;\n" +
+        "export function notAConvention() { return null; }\n" +
+        "type RouteValue = string | number;\n" +
+        "if (true) {\n" +
+        "  const value = 1;\n" +
+        "} else {\n" +
+        "  const fallback = 2;\n" +
+        "}\n",
+    );
+
+    const result = runCli(project.cwd);
+
+    assertFailedCli(result);
+    assertNoFinding(result, "REQ-018", "app/page.ts", 'Exported value "default"');
+    assertFinding(result, "REQ-019", "app/page.ts", 'Imported value "unchangedValue"');
+    assertFinding(result, "REQ-018", "app/page.ts", 'Exported value "notAConvention"');
+    assertFinding(result, "REQ-029", "app/page.ts", "Type alias declarations are not permitted");
+    assertFinding(result, "REQ-030", "app/page.ts", "Union type syntax is not permitted");
+    assertFinding(result, "REQ-032", "app/page.ts", "else and else if branches are not permitted");
+  },
+);
 
 test(`[${PROPERTY_ID}] an exact Pages Router exception leaves other lowercase get names enforced`, (t) => {
   const project = createTemporaryProject(t);
