@@ -6,6 +6,7 @@ import { runCli } from "../test-support/run-cli.js";
 
 const PROPERTY_ID = "PROP-REQ-006-01";
 const FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID = "PROP-REQ-001-01";
+const SOURCE_SET_PROPERTY_ID = "PROP-REQ-007-01";
 const UNSUPPORTED_SYMLINK_ERRORS = new Set([
   "EACCES",
   "ENOSYS",
@@ -131,7 +132,7 @@ test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] React compatibility keeps policy r
   );
 });
 
-test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] Next.js compatibility does not add convention, generated, dependency, or JavaScript paths as policy roots`, (t) => {
+test(`[${SOURCE_SET_PROPERTY_ID}] Next.js routing analysis does not add convention, generated, dependency, or JavaScript paths as policy roots`, (t) => {
   const project = createTemporaryProject(t);
   configureSourceScope(project, project.cwd, ["src/**/*.ts", "src/**/*.tsx"]);
   installNext(project);
@@ -140,6 +141,7 @@ test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] Next.js compatibility does not add
     "let selectedTypeScript = 1;\n" +
       "export function OrdinaryCallable() { return 1; }\n",
   );
+  project.writeFile("src/selected-view.tsx", "let selectedTsx = 1;\n");
   project.writeFile(
     "app/page.tsx",
     "let excludedRoute = 1;\n" +
@@ -159,8 +161,12 @@ test(`[${FRAMEWORK_SOURCE_SCOPE_PROPERTY_ID}] Next.js compatibility does not add
   assert.deepEqual(diagnosticPaths(result), [
     { filePath: "src/ordinary.ts", requirementId: "REQ-009" },
     { filePath: "src/ordinary.ts", requirementId: "REQ-018" },
+    { filePath: "src/selected-view.tsx", requirementId: "REQ-009" },
   ]);
-  assert.doesNotMatch(result.stderr, /\bapp\/page\.tsx:/u);
+  assert.doesNotMatch(
+    result.stderr,
+    /\b(?:app\/page\.tsx|generated\/Generated\.ts|node_modules\/third-party\/index\.ts|src\/legacy\.(?:js|jsx)):/u,
+  );
   assert.doesNotMatch(result.stderr, /__tightscript_compatibility_probe__/u);
 });
 
