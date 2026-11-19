@@ -5,6 +5,9 @@ import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
 const PROPERTY_ID = "PROP-REQ-004-01";
+const ROUTING_PROPERTY_ID = "PROP-REQ-001-01";
+const CONVENTION_PROPERTY_ID = "PROP-REQ-005-01";
+const CONFIG_NON_EXECUTION_PROPERTY_ID = "PROP-REQ-006-01";
 
 function configureSourceScope(project) {
   project.writeFile(
@@ -77,7 +80,7 @@ function assertDiagnostic(result, requirementId, exportName, filePath) {
   );
 }
 
-test(`[${PROPERTY_ID}] Next.js 16.x accepts every listed router, file-role, and callable-export combination`, (t) => {
+test(`[${PROPERTY_ID}] [${CONVENTION_PROPERTY_ID}] Next.js 16.x accepts every listed router, file-role, and callable-export combination`, (t) => {
   const project = createTemporaryProject(t);
   configureSourceScope(project);
   installNext(project);
@@ -211,7 +214,7 @@ test(`[${PROPERTY_ID}] supported src layouts work and active project-root router
   });
 });
 
-test(`[${PROPERTY_ID}] unsupported roles, names, and file boundaries retain REQ-018`, (t) => {
+test(`[${PROPERTY_ID}] [${CONVENTION_PROPERTY_ID}] unsupported roles, names, and file boundaries retain REQ-018`, (t) => {
   const project = createTemporaryProject(t);
   configureSourceScope(project);
   installNext(project);
@@ -322,7 +325,7 @@ test(`[${PROPERTY_ID}] default, unchanged, changed, and indeterminate routing co
     assert.doesNotMatch(result.stderr, /\[REQ-005\] Evaluation error:/);
   });
 
-  await t.test(`[${PROPERTY_ID}] dynamic configuration fails closed without execution`, (subtest) => {
+  await t.test(`[${PROPERTY_ID}] [${CONFIG_NON_EXECUTION_PROPERTY_ID}] dynamic configuration fails closed without execution`, (subtest) => {
     const project = createTemporaryProject(subtest);
     configureSourceScope(project);
     installNext(project);
@@ -340,6 +343,170 @@ test(`[${PROPERTY_ID}] default, unchanged, changed, and indeterminate routing co
     assert.match(result.stderr, /\[REQ-005\] Evaluation error:/);
     assert.equal(existsSync(`${project.cwd}/config-executed`), false);
   });
+});
+
+test(`[${ROUTING_PROPERTY_ID}] [${CONVENTION_PROPERTY_ID}] omitted pageExtensions ignores unrelated dynamic values without widening the convention boundary`, async (t) => {
+  const scenarios = [
+    {
+      name: "inline config with dynamic distDir",
+      config: 'module.exports = { distDir: process.env.DIST_DIR };\n',
+    },
+    {
+      name: "const-aliased config with dynamic distDir",
+      config:
+        'const dynamicDistDir = process.env.DIST_DIR;\n' +
+        'const config = { distDir: dynamicDistDir };\n' +
+        'module.exports = config;\n',
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    await t.test(`[${ROUTING_PROPERTY_ID}] ${scenario.name}`, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      configureSourceScope(project);
+      installNext(project);
+      project.writeFile("next.config.js", scenario.config);
+      project.writeFile("app/page.tsx", callableExport("default"));
+      project.writeFile(
+        "app/not-a-convention.ts",
+        callableExport("default", "Unsupported"),
+      );
+
+      const result = runCli(project.cwd);
+
+      assertFailedCli(result);
+      assert.equal(
+        result.stderr.split("\n").some(
+          (line) =>
+            line.startsWith("app/page.tsx:") && line.includes("[REQ-018]"),
+        ),
+        false,
+        result.stderr,
+      );
+      assertDiagnostic(result, "REQ-018", "default", "app/not-a-convention.ts");
+      assert.doesNotMatch(result.stderr, /\[REQ-005\] Evaluation error:/);
+    });
+  }
+});
+
+test(`[${ROUTING_PROPERTY_ID}] explicit and shorthand default pageExtensions qualify through the real CLI`, async (t) => {
+  const scenarios = [
+    {
+      name: "explicit property resolves a const alias",
+      config:
+        'const tsx = "tsx";\n' +
+        'const extensions = [tsx, "ts", "jsx", "js"];\n' +
+        'module.exports = { pageExtensions: extensions };\n',
+      route: "app/page.tsx",
+    },
+    {
+      name: "shorthand property resolves its const alias",
+      config:
+        'const pageExtensions = ["tsx", "ts", "jsx", "js"];\n' +
+        'module.exports = { pageExtensions };\n',
+      route: "pages/index.tsx",
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    await t.test(`[${ROUTING_PROPERTY_ID}] ${scenario.name}`, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      configureSourceScope(project);
+      installNext(project);
+      project.writeFile("next.config.js", scenario.config);
+      project.writeFile(scenario.route, callableExport("default"));
+
+      assertPassedCli(runCli(project.cwd));
+    });
+  }
+});
+
+test(`[${ROUTING_PROPERTY_ID}] statically changed pageExtensions retain ordinary policy findings`, async (t) => {
+  const scenarios = [
+    {
+      name: "different ordered string array",
+      config: 'module.exports = { pageExtensions: ["ts", "tsx", "jsx", "js"] };\n',
+    },
+    {
+      name: "static non-array value",
+      config: 'module.exports = { pageExtensions: "tsx" };\n',
+    },
+    {
+      name: "static array containing a non-string",
+      config: 'module.exports = { pageExtensions: ["tsx", 1] };\n',
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    await t.test(`[${ROUTING_PROPERTY_ID}] ${scenario.name}`, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      configureSourceScope(project);
+      installNext(project);
+      project.writeFile("next.config.js", scenario.config);
+      project.writeFile("app/page.tsx", callableExport("default"));
+
+      const result = runCli(project.cwd);
+
+      assertFailedCli(result);
+      assertDiagnostic(result, "REQ-018", "default", "app/page.tsx");
+      assert.doesNotMatch(result.stderr, /\[REQ-005\] Evaluation error:/);
+    });
+  }
+});
+
+test(`[${ROUTING_PROPERTY_ID}] indeterminate routing shapes grant no convention exception`, async (t) => {
+  const scenarios = [
+    {
+      name: "dynamic pageExtensions value",
+      config: 'module.exports = { pageExtensions: process.env.PAGE_EXTENSIONS };\n',
+    },
+    {
+      name: "computed pageExtensions value",
+      config:
+        'const extensions = ["tsx", "ts", "jsx", "js"];\n' +
+        'module.exports = { pageExtensions: getExtensions(extensions) };\n',
+    },
+    {
+      name: "computed config key",
+      config:
+        'module.exports = { [process.env.CONFIG_KEY]: ["tsx", "ts", "jsx", "js"] };\n',
+    },
+    {
+      name: "unanalysable spread",
+      config: 'module.exports = { ...loadConfig() };\n',
+    },
+    {
+      name: "duplicate pageExtensions entries",
+      config:
+        'module.exports = { pageExtensions: ["tsx", "ts", "jsx", "js"], pageExtensions: ["ts"] };\n',
+    },
+    {
+      name: "pageExtensions accessor",
+      config:
+        'module.exports = { get pageExtensions() { return ["tsx", "ts", "jsx", "js"]; } };\n',
+    },
+    {
+      name: "prototype-changing __proto__ setter",
+      config:
+        'module.exports = { __proto__: { pageExtensions: ["tsx", "ts", "jsx", "js"] } };\n',
+    },
+  ];
+
+  for (const scenario of scenarios) {
+    await t.test(`[${ROUTING_PROPERTY_ID}] ${scenario.name}`, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      configureSourceScope(project);
+      installNext(project);
+      project.writeFile("next.config.js", scenario.config);
+      project.writeFile("app/page.tsx", callableExport("default"));
+
+      const result = runCli(project.cwd);
+
+      assertFailedCli(result);
+      assertDiagnostic(result, "REQ-018", "default", "app/page.tsx");
+      assert.match(result.stderr, /\[REQ-005\] Evaluation error:/);
+    });
+  }
 });
 
 const PAGES_DATA_PROPERTY_ID = "PROP-REQ-009-01";

@@ -242,7 +242,7 @@ test("routing status tracks only statically relevant config shape [PROP-REQ-001-
   }
 });
 
-test("dynamic routing configuration is indeterminate and is never executed [REQ-005, REQ-006, REQ-012]", (t) => {
+test("dynamic routing configuration is indeterminate and is never executed [REQ-005, REQ-006, REQ-012, PROP-REQ-006-01]", (t) => {
   const project = createTemporaryProject(t);
   const markerPath = resolve(project.cwd, "configuration-executed");
   project.writeFile(
