@@ -1,4 +1,5 @@
 import assert from "node:assert/strict";
+import { execFileSync } from "node:child_process";
 import test from "node:test";
 import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
@@ -9,6 +10,73 @@ function configureSourceScope(project) {
     JSON.stringify({ include: ["src/**/*.ts", "src/**/*.tsx"] }),
   );
 }
+
+function installNext(project) {
+  project.writeFile(
+    "node_modules/next/package.json",
+    JSON.stringify({ name: "next", version: "16.2.0", main: "index.js" }),
+  );
+  project.writeFile("node_modules/next/index.js", "module.exports = {};\n");
+}
+
+function initializeGitRepository(project, trackedFilePaths) {
+  execFileSync("git", ["init", "--quiet"], {
+    cwd: project.cwd,
+    stdio: "ignore",
+  });
+  execFileSync("git", ["add", "--", ...trackedFilePaths], {
+    cwd: project.cwd,
+    stdio: "ignore",
+  });
+}
+
+test("[REQ-001, REQ-002] supported Next.js context exempts selected non-route client directives regardless of routing configuration", async (t) => {
+  const routingConfigurations = [
+    { name: "default routing configuration" },
+    {
+      name: "changed routing configuration",
+      source: 'module.exports = { pageExtensions: ["page.tsx"] };\n',
+    },
+    {
+      name: "indeterminate routing configuration",
+      source:
+        "module.exports = { pageExtensions: process.env.PAGE_EXTENSIONS };\n",
+    },
+  ];
+
+  for (const routingConfiguration of routingConfigurations) {
+    await t.test(routingConfiguration.name, (subtest) => {
+      const project = createTemporaryProject(subtest);
+      configureSourceScope(project);
+      installNext(project);
+      project.writeFile("src/guide.md", "# Test fixture guide\n");
+      initializeGitRepository(project, ["src/guide.md"]);
+      if (routingConfiguration.source !== undefined) {
+        project.writeFile("next.config.js", routingConfiguration.source);
+      }
+      project.writeFile(
+        "src/components/ClientBoundary.ts",
+        "// @see [test fixture guide](../guide.md)\n" +
+          '"use strict";\n' +
+          "/* @see [test fixture guide](../guide.md) */\n" +
+          "'use client';\n",
+      );
+      project.writeFile(
+        "src/widgets/ClientPanel.tsx",
+        "'use client';\n",
+      );
+      project.writeFile("src/shared/ClientValues.ts", '"use client";\n');
+
+      const result = runCli(project.cwd);
+
+      assert.ifError(result.error);
+      assert.equal(result.signal, null);
+      assert.equal(result.status, 0, result.stderr);
+      assert.equal(result.stdout, "PASS\n");
+      assert.equal(result.stderr, "");
+    });
+  }
+});
 
 test("[PROP-REQ-034-01] eligible repeated strings cross files and respect occurrence and code-point boundaries", (t) => {
   const project = createTemporaryProject(t);
