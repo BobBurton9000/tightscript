@@ -150,6 +150,40 @@ test(
   },
 );
 
+test(
+  `[${PROPERTY_ID}, REQ-001, REQ-007] supported Next.js client directives leave unrelated policy findings enabled`,
+  (t) => {
+    const project = createTemporaryProject(t);
+    configureProject(project);
+    project.writeFile("app/components/ClientOne.ts", '"use client";\n');
+    project.writeFile("app/components/ClientTwo.tsx", "'use client';\n");
+    project.writeFile("app/widgets/ClientThree.ts", '"use client";\n');
+    project.writeFile(
+      "app/policy.ts",
+      "if (true) {\n" +
+        "  const value = 1;\n" +
+        "} else {\n" +
+        "  const fallback = 2;\n" +
+        "}\n",
+    );
+
+    const result = runCli(project.cwd);
+
+    assertFailedCli(result);
+    assert.equal(
+      result.stderr.split("\n").some((line) => line.includes("[REQ-034]")),
+      false,
+      `unexpected repeated-string directive finding:\n${result.stderr}`,
+    );
+    assertFinding(
+      result,
+      "REQ-032",
+      "app/policy.ts",
+      "else and else if branches are not permitted",
+    );
+  },
+);
+
 test(`[${PROPERTY_ID}] an exact Pages Router exception leaves other lowercase get names enforced`, (t) => {
   const project = createTemporaryProject(t);
   configureProject(project);
