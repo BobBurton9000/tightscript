@@ -329,6 +329,8 @@ function commentViolations(selectedFile, getRepositoryContext) {
 // @see [Tightscript: comment validation reports suppressions without hiding other violations.](./comment-policy.md#tightscript-req-014)
 // @see [Tightscript: comment findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 // @see [Tightscript: comment validation enforces the comment, link-target, and suppression invariants.](./comment-policy.md#tightscript-prop-req-010-01)
+// @see [nextjs-client-directive-exemption: Comment validation rejects suppression directives that could override the fixed exception.](./repeated-strings.md#nextjs-client-directive-exemption-req-006)
+// @see [nextjs-client-directive-exemption: Comment validation keeps the directive exception outside suppression mechanisms.](./repeated-strings.md#nextjs-client-directive-exemption-prop-req-001-01)
 export function findCommentViolations(analysis) {
   const violations = [];
   let repositoryContext;

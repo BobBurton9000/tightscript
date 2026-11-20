@@ -206,6 +206,13 @@ function stringOccurrencesFrom(sourceFiles, frameworkContext) {
 // @see [Tightscript: string analysis excludes direct comparisons against unary `typeof`.](./repeated-strings.md#tightscript-req-036)
 // @see [Tightscript: repeated-string findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 // @see [Tightscript: string analysis counts eligible literals across all selected files.](./repeated-strings.md#tightscript-prop-req-034-01)
+// @see [nextjs-client-directive-exemption: This validator excludes only qualifying client directives from repeated-string counts.](./repeated-strings.md#nextjs-client-directive-exemption-req-001)
+// @see [nextjs-client-directive-exemption: This validator bases directive eligibility on supported Next.js context and position, not route classification.](./repeated-strings.md#nextjs-client-directive-exemption-req-002)
+// @see [nextjs-client-directive-exemption: This validator counts every non-qualifying `use client` occurrence under the existing policy.](./repeated-strings.md#nextjs-client-directive-exemption-req-003)
+// @see [nextjs-client-directive-exemption: This validator preserves existing thresholds, cross-file counting, and literal exclusions.](./repeated-strings.md#nextjs-client-directive-exemption-req-004)
+// @see [nextjs-client-directive-exemption: This validator processes only files already selected for analysis.](./repeated-strings.md#nextjs-client-directive-exemption-req-005)
+// @see [nextjs-client-directive-exemption: This validator enforces the tested directive-eligibility invariant.](./repeated-strings.md#nextjs-client-directive-exemption-prop-req-001-01)
+// @see [nextjs-client-directive-exemption: This validator preserves counting boundaries over the selected source set.](./repeated-strings.md#nextjs-client-directive-exemption-prop-req-004-01)
 export function findRepeatedStringViolations(analysis, frameworkContext) {
   const violations = [];
   const occurrencesByValue = stringOccurrencesFrom(

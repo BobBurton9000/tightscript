@@ -8,6 +8,8 @@ const CONFIG_FILENAME = "tightscript.config.json";
 // @see [Tightscript: config parsing rejects settings that could weaken the fixed policy.](./configuration.md#tightscript-req-008)
 // @see [Tightscript: config parsing rejects absent or empty include settings.](./configuration.md#tightscript-req-039)
 // @see [Tightscript: config parsing rejects every policy-weakening setting.](./configuration.md#tightscript-prop-req-008-01)
+// @see [nextjs-client-directive-exemption: This parser rejects configurable directive exceptions and rule switches.](./repeated-strings.md#nextjs-client-directive-exemption-req-006)
+// @see [nextjs-client-directive-exemption: This parser prevents settings from changing the fixed directive-eligibility boundary.](./repeated-strings.md#nextjs-client-directive-exemption-prop-req-001-01)
 function configurationFromJson(contents) {
   let configuration;
   try {
@@ -127,6 +129,9 @@ async function initializeConfiguration() {
 // @see [react-next-compatibility: the CLI keeps independent policy findings when a narrow exception applies.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
 // @see [next-routing-config-resolution: the CLI runs ordinary validators after framework eligibility analysis.](./framework-compatibility.md#react-next-compatibility-req-003)
 // @see [next-routing-config-resolution: the CLI retains independent findings alongside framework exceptions.](./framework-compatibility.md#react-next-compatibility-prop-req-007-01)
+// @see [nextjs-client-directive-exemption: The CLI builds analysis only from files selected by configured include patterns.](./repeated-strings.md#nextjs-client-directive-exemption-req-005)
+// @see [nextjs-client-directive-exemption: The CLI continues running unrelated policy validators alongside the directive exception.](./repeated-strings.md#nextjs-client-directive-exemption-req-007)
+// @see [nextjs-client-directive-exemption: The CLI retains unrelated findings when qualifying client directives are exempted.](./repeated-strings.md#nextjs-client-directive-exemption-prop-req-007-01)
 async function main() {
   if (process.argv[2] === "init") {
     await initializeConfiguration();

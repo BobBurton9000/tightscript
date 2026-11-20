@@ -86,6 +86,7 @@ function shouldIgnoreMissingSymlinkTarget(error) {
 // @see [react-next-compatibility: the source-scope resolver does not add unselected paths to policy roots.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
 // @see [next-routing-config-resolution: source resolution supplies only include-selected TypeScript roots to framework analysis.](./framework-compatibility.md#react-next-compatibility-req-002)
 // @see [next-routing-config-resolution: the source resolver leaves convention and excluded paths outside policy roots.](./framework-compatibility.md#react-next-compatibility-prop-req-001-01)
+// @see [nextjs-client-directive-exemption: The resolver selects only files matched by configured include patterns.](./repeated-strings.md#nextjs-client-directive-exemption-req-005)
 export async function resolveSourceFiles(includePatterns, cwd = process.cwd()) {
   if (!Array.isArray(includePatterns) || includePatterns.length === 0) {
     throw new TypeError("Source-scope patterns must be a non-empty array.");

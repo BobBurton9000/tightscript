@@ -122,7 +122,7 @@ The path and heading above are illustrative: replace them with a real tracked fi
 
 When the same eligible string value of at least three Unicode code points occurs at least three times across the selected files, replace every occurrence with one named constant. The count is global across the selected source set, not per file. Single- and double-quoted strings and template literals without substitutions count equally by their resulting value.
 
-Module specifiers, `require()` arguments, property or method keys, TypeScript literal types, enum members, and strings directly compared with a `typeof` expression are excluded. There are no other literal exemptions. Use a shared constant instead of repeating an eligible message or key in three or more places.
+Module specifiers, `require()` arguments, property or method keys, TypeScript literal types, enum members, and strings directly compared with a `typeof` expression are excluded. The only additional exception is a bare top-level `use client` string-literal directive in the directive prologue of a selected `.ts` or `.tsx` file when the project has a resolved supported Next.js version; ordinary occurrences remain countable. No other literal exemptions apply. See the [detailed repeated-string policy](../bin/repeated-strings.md#nextjs-client-directive-exemption-req-001). Use a shared constant instead of repeating an eligible message or key in three or more places.
 
 ## 7. Use framework exceptions only when they are proven
 
