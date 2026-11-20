@@ -211,8 +211,9 @@ async function main() {
       const analysis = createTypeScriptAnalysis(selectedFiles);
       try {
         let compatibility;
+        let frameworkContext;
         try {
-          const frameworkContext = resolveFrameworkContext(process.cwd());
+          frameworkContext = resolveFrameworkContext(process.cwd());
           const hasConfiguredJsx =
             analysis.program?.getCompilerOptions().jsx !== undefined;
           if (frameworkContext.next.status !== "absent" || hasConfiguredJsx) {
@@ -242,7 +243,7 @@ async function main() {
           ...findTypeAliasAndUnionViolations(analysis.sourceFiles),
           ...findSyntaxStyleViolations(analysis, compatibility),
           ...findCommentViolations(analysis),
-          ...findRepeatedStringViolations(analysis),
+          ...findRepeatedStringViolations(analysis, frameworkContext),
         ];
       } finally {
         evaluationErrors.push(...analysis.evaluationErrors);

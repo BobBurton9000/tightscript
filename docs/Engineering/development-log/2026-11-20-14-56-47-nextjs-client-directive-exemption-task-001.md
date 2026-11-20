@@ -1,0 +1,7 @@
+# 2026-11-20 — Next.js client directive exemption TASK-001
+
+- Type: Feature implementation
+- Scope: Repeated-string analysis and CLI framework-context flow; TASK-001 in `.specflow/specs/nextjs-client-directive-exemption/`; changed paths: `bin/tightscript.js`, `bin/repeated-string-validator.js`, `.specflow/specs/nextjs-client-directive-exemption/tasks.md`.
+- Context and evidence: Approved Feature requirements REQ-001 through REQ-007 and the design specify a fixed exception only for bare `use client` string-literal expression nodes in a selected file's directive prologue when resolved Next.js context is supported.
+- Decision or change: Passed the invocation's resolved framework context into repeated-string analysis. The validator now excludes only exact `use client` string literal nodes in the top-level directive prologue when `next.status` is `supported`; failed or unavailable context grants no exemption. Existing occurrence counting, thresholds, exclusions, and source selection remain unchanged.
+- Observed result: `node --test test/cli-repeated-string.test.js` passed (3 tests, 0 failures). `git diff --check` passed. A temporary CLI smoke check passed: supported Next.js 16 context returned `PASS` for three qualifying directives, while absent Next.js context retained all three REQ-034 findings. An initial smoke fixture included plain comments and triggered unrelated REQ-010 findings; the corrected comment-free fixture passed.

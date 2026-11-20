@@ -156,12 +156,36 @@ function diagnosticFor(selectedFile, node, value) {
   };
 }
 
-function stringOccurrencesFrom(sourceFiles) {
+function clientDirectiveNodesFrom(sourceFile) {
+  const directiveNodes = new Set();
+  for (const statement of sourceFile.statements) {
+    if (
+      !ts.isExpressionStatement(statement) ||
+      !ts.isStringLiteral(statement.expression)
+    ) {
+      break;
+    }
+    if (statement.expression.text === "use client") {
+      directiveNodes.add(statement.expression);
+    }
+  }
+  return directiveNodes;
+}
+
+function stringOccurrencesFrom(sourceFiles, frameworkContext) {
   const occurrencesByValue = new Map();
 
   for (const selectedFile of sourceFiles) {
+    const clientDirectiveNodes =
+      frameworkContext?.next?.status === "supported"
+        ? clientDirectiveNodesFrom(selectedFile.sourceFile)
+        : new Set();
+
     function visit(node) {
-      if (isEligibleStringLiteral(node)) {
+      if (
+        !clientDirectiveNodes.has(node) &&
+        isEligibleStringLiteral(node)
+      ) {
         const occurrences = occurrencesByValue.get(node.text) ?? [];
         occurrences.push({ selectedFile, node });
         occurrencesByValue.set(node.text, occurrences);
@@ -182,9 +206,12 @@ function stringOccurrencesFrom(sourceFiles) {
 // @see [Tightscript: string analysis excludes direct comparisons against unary `typeof`.](./repeated-strings.md#tightscript-req-036)
 // @see [Tightscript: repeated-string findings retain the source and rule details required of every diagnostic.](./diagnostics.md#tightscript-prop-req-004-01)
 // @see [Tightscript: string analysis counts eligible literals across all selected files.](./repeated-strings.md#tightscript-prop-req-034-01)
-export function findRepeatedStringViolations(analysis) {
+export function findRepeatedStringViolations(analysis, frameworkContext) {
   const violations = [];
-  const occurrencesByValue = stringOccurrencesFrom(analysis.sourceFiles);
+  const occurrencesByValue = stringOccurrencesFrom(
+    analysis.sourceFiles,
+    frameworkContext,
+  );
 
   for (const [value, occurrences] of occurrencesByValue) {
     if (
