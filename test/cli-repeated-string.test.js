@@ -5,6 +5,7 @@ import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
 const CLIENT_DIRECTIVE_PROPERTY_ID = "PROP-REQ-001-01";
+const REPEATED_STRING_BOUNDARIES_PROPERTY_ID = "PROP-REQ-004-01";
 
 function configureSourceScope(project) {
   project.writeFile(
@@ -212,9 +213,10 @@ test("[PROP-REQ-034-01] eligible repeated strings cross files and respect occurr
   assert.doesNotMatch(result.stderr, /occurs-twice|"xy"|😀😃/);
 });
 
-test("[PROP-REQ-034-01] all REQ-035 and REQ-036 exclusions remain excluded across files", (t) => {
+test(`[${REPEATED_STRING_BOUNDARIES_PROPERTY_ID}, REQ-004] all REQ-035 and REQ-036 exclusions remain excluded with supported Next.js directives`, (t) => {
   const project = createTemporaryProject(t);
   configureSourceScope(project);
+  installNext(project);
   const typeofComparisonCases = [
     ["typeof-strict-equal-forward", "===", true],
     ["typeof-strict-equal-reverse", "===", false],
@@ -241,7 +243,8 @@ test("[PROP-REQ-034-01] all REQ-035 and REQ-036 exclusions remain excluded acros
 
   project.writeFile(
     "src/ExcludedStrings.ts",
-    'import staticFirst from "static-module-only";\n' +
+    '"use client";\n' +
+      'import staticFirst from "static-module-only";\n' +
       'import staticSecond from "static-module-only";\n' +
       'void import("dynamic-module-only");\n' +
       'void import("dynamic-module-only");\n' +
@@ -273,7 +276,8 @@ test("[PROP-REQ-034-01] all REQ-035 and REQ-036 exclusions remain excluded acros
   );
   project.writeFile(
     "src/MoreExcludedStrings.ts",
-    'import staticThird from "static-module-only";\n' +
+    "'use client';\n" +
+      'import staticThird from "static-module-only";\n' +
       'void import("dynamic-module-only");\n' +
       'require("require-argument-only");\n' +
       'const propertyThree = { "property-key-only": 3 };\n' +
@@ -289,6 +293,102 @@ test("[PROP-REQ-034-01] all REQ-035 and REQ-036 exclusions remain excluded acros
       'const runtimeType = "runtime-value";\n' +
       comparisonsOnce +
       "\n",
+  );
+  project.writeFile("src/LastExcludedStrings.tsx", '"use client";\n');
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 0, result.stderr);
+  assert.equal(result.stdout, "PASS\n");
+  assert.equal(result.stderr, "");
+});
+
+test(`[${REPEATED_STRING_BOUNDARIES_PROPERTY_ID}, REQ-004] supported context preserves repeated-string thresholds, Unicode boundaries, and cross-file counting`, (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  installNext(project);
+  project.writeFile(
+    "src/First.ts",
+    '"use client";\n' +
+      'const twoOccurrenceFirst = "occurs-twice";\n' +
+      'const countedFirst = "cross-file-value";\n' +
+      'const shortFirst = "xy";\n' +
+      'const shortSecond = "xy";\n' +
+      'const shortThird = "xy";\n' +
+      'const twoCodePointFirst = "😀😃";\n' +
+      'const twoCodePointSecond = "😀😃";\n' +
+      'const twoCodePointThird = "😀😃";\n' +
+      'const threeCodePointFirst = "😀ab";\n',
+  );
+  project.writeFile(
+    "src/Second.ts",
+    "'use client';\n" +
+      'const twoOccurrenceSecond = "occurs-twice";\n' +
+      'const countedSecond = "cross-file-value";\n',
+  );
+  project.writeFile(
+    "src/Third.tsx",
+    '"use client";\n' +
+      'const countedThird = "cross-file-value";\n' +
+      'const threeCodePointSecond = "😀ab";\n' +
+      'const threeCodePointThird = "😀ab";\n',
+  );
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  const diagnostics = result.stderr
+    .split("\n")
+    .filter((line) => line.includes("[REQ-034]"));
+  assert.deepEqual(
+    diagnostics.map((line) => line.match(/^(.*:\d+):\d+ \[REQ-034\]/)?.[1]),
+    [
+      "src/First.ts:3",
+      "src/First.ts:10",
+      "src/Second.ts:3",
+      "src/Third.tsx:2",
+      "src/Third.tsx:3",
+      "src/Third.tsx:4",
+    ],
+  );
+  assert.equal(diagnostics.length, 6, result.stderr);
+  assert.doesNotMatch(result.stderr, /use client|occurs-twice|"xy"|😀😃/);
+  assert.match(result.stderr, /\nFAIL\n$/);
+});
+
+test(`[${REPEATED_STRING_BOUNDARIES_PROPERTY_ID}, REQ-005] configured source selection excludes out-of-scope paths and extensions`, (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  installNext(project);
+  project.writeFile(
+    "src/SelectedA.ts",
+    '"use client";\n' +
+      'const pathControlFirst = "path-boundary";\n' +
+      'const extensionControlFirst = "extension-boundary";\n',
+  );
+  project.writeFile(
+    "src/SelectedB.tsx",
+    "'use client';\n" +
+      'const pathControlSecond = "path-boundary";\n' +
+      'const extensionControlSecond = "extension-boundary";\n',
+  );
+  project.writeFile(
+    "outside/OutOfPattern.ts",
+    'const pathControlThird = "path-boundary";\n' +
+      'const pathControlFourth = "path-boundary";\n',
+  );
+  project.writeFile(
+    "src/legacy.js",
+    'const extensionControlThird = "extension-boundary";\n',
+  );
+  project.writeFile(
+    "src/legacy.jsx",
+    'const extensionControlFourth = "extension-boundary";\n',
   );
 
   const result = runCli(project.cwd);
