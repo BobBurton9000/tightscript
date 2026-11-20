@@ -4,6 +4,7 @@ import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
 const PROPERTY_ID = "PROP-REQ-008-01";
+const CLIENT_DIRECTIVE_PROPERTY_ID = "PROP-REQ-001-01";
 
 const prohibitedSettings = [
   {
@@ -77,5 +78,28 @@ test(`[${PROPERTY_ID}] positive include selection remains usable without weakeni
   assert.equal(
     result.stderr,
     "selected/Violation.ts:1:1 [REQ-009] `let` declarations are not permitted.\nFAIL\n",
+  );
+});
+
+test(`[${CLIENT_DIRECTIVE_PROPERTY_ID}] user-configurable client directive exceptions are rejected`, (t) => {
+  const project = createTemporaryProject(t);
+  project.writeFile(
+    "tightscript.config.json",
+    JSON.stringify({
+      include: ["src/**/*.ts"],
+      directiveExceptions: ["use client"],
+    }),
+  );
+  project.writeFile("src/Client.ts", '"use client";\n');
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  assert.equal(
+    result.stderr,
+    "FAIL: Source-scope configuration error: tightscript.config.json contains unsupported setting(s): directiveExceptions.\n",
   );
 });

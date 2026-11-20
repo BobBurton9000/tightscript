@@ -4,6 +4,8 @@ import test from "node:test";
 import { createTemporaryProject } from "../test-support/temp-project.js";
 import { runCli } from "../test-support/run-cli.js";
 
+const CLIENT_DIRECTIVE_PROPERTY_ID = "PROP-REQ-001-01";
+
 function configureSourceScope(project) {
   project.writeFile(
     "tightscript.config.json",
@@ -11,10 +13,10 @@ function configureSourceScope(project) {
   );
 }
 
-function installNext(project) {
+function installNext(project, version = "16.2.0") {
   project.writeFile(
     "node_modules/next/package.json",
-    JSON.stringify({ name: "next", version: "16.2.0", main: "index.js" }),
+    JSON.stringify({ name: "next", version, main: "index.js" }),
   );
   project.writeFile("node_modules/next/index.js", "module.exports = {};\n");
 }
@@ -30,7 +32,7 @@ function initializeGitRepository(project, trackedFilePaths) {
   });
 }
 
-test("[REQ-001, REQ-002] supported Next.js context exempts selected non-route client directives regardless of routing configuration", async (t) => {
+test(`[${CLIENT_DIRECTIVE_PROPERTY_ID}, REQ-001, REQ-002] supported Next.js context exempts selected non-route client directives regardless of routing configuration`, async (t) => {
   const routingConfigurations = [
     { name: "default routing configuration" },
     {
@@ -77,6 +79,85 @@ test("[REQ-001, REQ-002] supported Next.js context exempts selected non-route cl
     });
   }
 });
+
+test(`[${CLIENT_DIRECTIVE_PROPERTY_ID}] post-prologue strings, parenthesized literals, templates, and ordinary values remain countable`, (t) => {
+  const project = createTemporaryProject(t);
+  configureSourceScope(project);
+  installNext(project);
+  const sourceLines = [
+    '"use strict";',
+    "const afterPrologue = true;",
+    '"use client";',
+    "'use client';",
+    '"use client";',
+    '("use client");',
+    "('use client');",
+    '("use client");',
+    "const templateOne = `use client`;",
+    "const templateTwo = `use client`;",
+    "const templateThree = `use client`;",
+    'const ordinaryOne = "use client";',
+    "const ordinaryTwo = 'use client';",
+    'const ordinaryThree = "use client";',
+  ];
+  project.writeFile("src/DirectiveForms.ts", `${sourceLines.join("\n")}\n`);
+
+  const result = runCli(project.cwd);
+
+  assert.ifError(result.error);
+  assert.equal(result.signal, null);
+  assert.equal(result.status, 1);
+  assert.equal(result.stdout, "");
+  const diagnostics = result.stderr
+    .split("\n")
+    .filter((line) => line.includes("[REQ-034]"));
+  assert.equal(diagnostics.length, 12, result.stderr);
+  assert.deepEqual(
+    diagnostics.map((line) =>
+      Number(line.match(/:(\d+):\d+ \[REQ-034\]/)?.[1]),
+    ),
+    Array.from({ length: 12 }, (_, index) => index + 3),
+  );
+  assert.match(result.stderr, /\nFAIL\n$/);
+});
+
+for (const scenario of [
+  { name: "absent", version: null },
+  { name: "unsupported", version: "15.4.1" },
+  { name: "indeterminate", version: "not-a-semver" },
+]) {
+  test(`[${CLIENT_DIRECTIVE_PROPERTY_ID}] ${scenario.name} Next.js context does not exempt qualifying directives`, (t) => {
+    const project = createTemporaryProject(t);
+    configureSourceScope(project);
+    if (scenario.version !== null) {
+      installNext(project, scenario.version);
+    }
+    const directives = [
+      ["src/ClientA.ts", '"use client";\n'],
+      ["src/ClientB.tsx", "'use client';\n"],
+      ["src/ClientC.ts", '"use client";\n'],
+    ];
+    for (const [filePath, contents] of directives) {
+      project.writeFile(filePath, contents);
+    }
+
+    const result = runCli(project.cwd);
+
+    assert.ifError(result.error);
+    assert.equal(result.signal, null);
+    assert.equal(result.status, 1);
+    assert.equal(result.stdout, "");
+    const diagnostics = result.stderr
+      .split("\n")
+      .filter((line) => line.includes("[REQ-034]"));
+    assert.equal(diagnostics.length, 3, result.stderr);
+    assert.deepEqual(
+      diagnostics.map((line) => line.match(/^(.*):\d+:\d+ \[REQ-034\]/)?.[1]),
+      directives.map(([filePath]) => filePath),
+    );
+    assert.match(result.stderr, /\nFAIL\n$/);
+  });
+}
 
 test("[PROP-REQ-034-01] eligible repeated strings cross files and respect occurrence and code-point boundaries", (t) => {
   const project = createTemporaryProject(t);
